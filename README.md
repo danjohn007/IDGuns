@@ -70,8 +70,6 @@ systemctl restart apache2
 
 Acceder a: `http://idguns.local/test_connection.php`
 
-> ⚠️ **Eliminar `test_connection.php` después de verificar la instalación.** Este archivo expone información del entorno y no debe estar accesible en producción.
-
 ---
 
 ## Credenciales por Defecto
