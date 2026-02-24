@@ -1,0 +1,11 @@
+Options -MultiViews
+RewriteEngine On
+
+# Allow direct access to existing files and directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else through the front controller
+# No RewriteBase here — Apache uses the .htaccess directory automatically,
+# so this works whether the app is at the domain root or in a subdirectory.
+RewriteRule ^ index.php [QSA,L]
