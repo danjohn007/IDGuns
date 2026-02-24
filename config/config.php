@@ -12,9 +12,9 @@ define('ROOT_PATH',   dirname(__DIR__));
 
 // Database credentials
 define('DB_HOST',    'localhost');
-define('DB_NAME',    'idguns');
-define('DB_USER',    'root');
-define('DB_PASS',    '');
+define('DB_NAME',    'residenc_idguns');
+define('DB_USER',    'residenc_idguns');
+define('DB_PASS',    'u&Yh,?Z3wuk1');
 define('DB_CHARSET', 'utf8mb4');
 
 // Session configuration
