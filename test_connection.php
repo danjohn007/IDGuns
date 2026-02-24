@@ -1,5 +1,13 @@
 <?php
-// Simple connection test — no authentication required
+// Diagnostic tool — restrict to localhost / local network only.
+// Remove or restrict this file after verifying your installation.
+$allowedIps = ['127.0.0.1', '::1', 'localhost'];
+$remoteIp   = $_SERVER['REMOTE_ADDR'] ?? '';
+if (!in_array($remoteIp, $allowedIps, true) && strpos($remoteIp, '192.168.') !== 0 && strpos($remoteIp, '10.') !== 0) {
+    http_response_code(403);
+    exit('403 Forbidden — Este archivo solo es accesible desde la red local.');
+}
+
 require_once __DIR__ . '/config/config.php';
 
 $checks = [];

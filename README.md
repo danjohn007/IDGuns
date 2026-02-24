@@ -70,19 +70,21 @@ systemctl restart apache2
 
 Acceder a: `http://idguns.local/test_connection.php`
 
+> ⚠️ **Eliminar `test_connection.php` después de verificar la instalación.** Este archivo expone información del entorno y no debe estar accesible en producción.
+
 ---
 
 ## Credenciales por Defecto
 
-> ⚠️ **Cambiar en producción. La contraseña de todos los usuarios de ejemplo es: `password`**
+> ⚠️ **Cambiar en producción. Las contraseñas por defecto de los usuarios de ejemplo son:**
 
-| Usuario      | Rol           |
-|-------------|---------------|
-| `superadmin` | Super Admin   |
-| `lvega`      | Admin         |
-| `sherrera`   | Admin         |
-| `dlopez`     | Almacén       |
-| `esalinas`   | Bitácora      |
+| Usuario      | Contraseña       | Rol           |
+|-------------|-----------------|---------------|
+| `superadmin` | `superadmin123` | Super Admin   |
+| `lvega`      | `admin123`      | Admin         |
+| `sherrera`   | `admin123`      | Admin         |
+| `dlopez`     | `almacen123`    | Almacén       |
+| `esalinas`   | `bitacora123`   | Bitácora      |
 
 Para generar hashes seguros:
 ```bash
