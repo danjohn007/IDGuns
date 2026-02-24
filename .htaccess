@@ -1,0 +1,12 @@
+Options -MultiViews
+RewriteEngine On
+
+# Detect the installation subdirectory automatically
+RewriteBase /
+
+# Allow direct access to existing files and directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route everything else through the front controller
+RewriteRule ^(.*)$ index.php [QSA,L]
