@@ -1,13 +1,15 @@
 <?php
 class InventoryController extends BaseController
 {
-    private Asset  $assetModel;
-    private Weapon $weaponModel;
+    private Asset     $assetModel;
+    private Weapon    $weaponModel;
+    private GpsDevice $gpsModel;
 
     public function __construct()
     {
         $this->assetModel  = new Asset();
         $this->weaponModel = new Weapon();
+        $this->gpsModel    = new GpsDevice();
     }
 
     public function index(): void
@@ -125,6 +127,22 @@ class InventoryController extends BaseController
             ]);
         }
 
+        // GPS device
+        if (!empty($_POST['gps_unique_id'])) {
+            $gpsData = [
+                'nombre'             => htmlspecialchars(trim($_POST['gps_nombre'] ?? $data['nombre']), ENT_QUOTES, 'UTF-8'),
+                'unique_id'          => htmlspecialchars(trim($_POST['gps_unique_id']), ENT_QUOTES, 'UTF-8'),
+                'traccar_device_id'  => !empty($_POST['gps_traccar_id']) ? (int)$_POST['gps_traccar_id'] : null,
+                'telefono'           => htmlspecialchars(trim($_POST['gps_telefono'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'modelo_dispositivo' => htmlspecialchars(trim($_POST['gps_modelo'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'categoria_traccar'  => $_POST['gps_categoria'] ?? 'car',
+                'contacto'           => htmlspecialchars(trim($_POST['gps_contacto'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'grupo_id'           => !empty($_POST['gps_grupo_id']) ? (int)$_POST['gps_grupo_id'] : null,
+                'activo'             => 1,
+            ];
+            $this->gpsModel->upsertForActivo($activoId, $gpsData);
+        }
+
         $this->setFlash('success', 'Activo registrado correctamente.');
         $this->redirect('inventario');
     }
@@ -140,15 +158,17 @@ class InventoryController extends BaseController
             $this->redirect('inventario');
         }
 
-        $arma     = $this->weaponModel->queryOne("SELECT * FROM armas WHERE activo_id = :a", [':a' => $id]);
-        $users    = (new User())->getAllActive();
-        $oficiales= $this->getOficiales();
+        $arma      = $this->weaponModel->queryOne("SELECT * FROM armas WHERE activo_id = :a", [':a' => $id]);
+        $gpsDevice = $this->gpsModel->findByActivoId($id);
+        $users     = (new User())->getAllActive();
+        $oficiales = $this->getOficiales();
 
         $this->render('inventory/edit', [
             'title'     => 'Editar Activo',
             'flash'     => $this->getFlash(),
             'activo'    => $activo,
             'arma'      => $arma,
+            'gpsDevice' => $gpsDevice,
             'users'     => $users,
             'oficiales' => $oficiales,
             'csrf'      => $this->csrfToken(),
@@ -192,6 +212,25 @@ class InventoryController extends BaseController
                 'municiones_asignadas'=> (int)($_POST['municiones_asignadas'] ?? 0),
             ];
             $this->weaponModel->update($armaId, $armaData);
+        }
+
+        // GPS device
+        if (!empty($_POST['gps_unique_id'])) {
+            $gpsData = [
+                'nombre'             => htmlspecialchars(trim($_POST['gps_nombre'] ?? $data['nombre']), ENT_QUOTES, 'UTF-8'),
+                'unique_id'          => htmlspecialchars(trim($_POST['gps_unique_id']), ENT_QUOTES, 'UTF-8'),
+                'traccar_device_id'  => !empty($_POST['gps_traccar_id']) ? (int)$_POST['gps_traccar_id'] : null,
+                'telefono'           => htmlspecialchars(trim($_POST['gps_telefono'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'modelo_dispositivo' => htmlspecialchars(trim($_POST['gps_modelo'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'categoria_traccar'  => $_POST['gps_categoria'] ?? 'car',
+                'contacto'           => htmlspecialchars(trim($_POST['gps_contacto'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'grupo_id'           => !empty($_POST['gps_grupo_id']) ? (int)$_POST['gps_grupo_id'] : null,
+            ];
+            if (!empty($_POST['gps_device_id'])) {
+                $this->gpsModel->update((int)$_POST['gps_device_id'], $gpsData);
+            } else {
+                $this->gpsModel->upsertForActivo($id, $gpsData);
+            }
         }
 
         $this->setFlash('success', 'Activo actualizado correctamente.');

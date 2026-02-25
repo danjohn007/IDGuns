@@ -64,6 +64,11 @@ $routes = [
     'configuracion'              => ['ConfigController',    'index'],
     'configuracion/guardar'      => ['ConfigController',    'save'],
     'configuracion/iot/guardar'  => ['ConfigController',    'saveIot'],
+
+    'geolocalizacion'               => ['GeoController', 'index'],
+    'geolocalizacion/posiciones'    => ['GeoController', 'positions'],
+    'geolocalizacion/ruta'          => ['GeoController', 'route'],
+    'geolocalizacion/dispositivos'  => ['GeoController', 'apiDevices'],
 ];
 
 // ─── Dynamic routes with numeric ID segments ───────────────────────────────

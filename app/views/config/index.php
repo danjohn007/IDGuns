@@ -306,19 +306,37 @@ $s = $settings ?? [];
         <!-- GPS -->
         <?php elseif ($currentTab === 'gps'): ?>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 class="font-semibold text-gray-800 mb-5">Configuración GPS Tracker</h3>
+            <h3 class="font-semibold text-gray-800 mb-1">Configuración GPS Tracker — Traccar</h3>
+            <p class="text-xs text-gray-500 mb-5">
+                Credenciales del servidor <a href="https://www.traccar.org" target="_blank" class="text-indigo-600 hover:underline">Traccar</a>.
+                <a href="<?= BASE_URL ?>/geolocalizacion" class="ml-2 text-indigo-600 hover:underline">
+                    <i class="fa-solid fa-map-location-dot mr-1"></i>Ver mapa de geolocalización
+                </a>
+            </p>
             <form method="POST" action="<?= BASE_URL ?>/configuracion/guardar">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES,'UTF-8') ?>">
                 <input type="hidden" name="tab" value="gps">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">API Key GPS</label>
-                        <input type="text" name="gps_api_key" value="<?= htmlspecialchars($s['gps_api_key']??'', ENT_QUOTES,'UTF-8') ?>"
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">URL del Servidor Traccar</label>
+                        <input type="url" name="traccar_url" value="<?= htmlspecialchars($s['traccar_url']??'', ENT_QUOTES,'UTF-8') ?>"
+                               placeholder="Ej. http://demo4.traccar.org"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">URL del Servicio GPS</label>
-                        <input type="url" name="gps_api_url" value="<?= htmlspecialchars($s['gps_api_url']??'', ENT_QUOTES,'UTF-8') ?>"
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Usuario Traccar</label>
+                        <input type="text" name="traccar_usuario" value="<?= htmlspecialchars($s['traccar_usuario']??'', ENT_QUOTES,'UTF-8') ?>"
+                               placeholder="admin@example.com"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña Traccar</label>
+                        <input type="password" name="traccar_password" value="<?= htmlspecialchars($s['traccar_password']??'', ENT_QUOTES,'UTF-8') ?>"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">API Key GPS (otros servicios)</label>
+                        <input type="text" name="gps_api_key" value="<?= htmlspecialchars($s['gps_api_key']??'', ENT_QUOTES,'UTF-8') ?>"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                     <div>

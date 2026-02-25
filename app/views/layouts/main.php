@@ -113,11 +113,12 @@
         ?>
 
         <p class="px-3 pt-1 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Principal</p>
-        <?= navLink('dashboard',     'fa-gauge-high',    'Dashboard',       $currentUri, 'dashboard') ?>
-        <?= navLink('inventario',    'fa-boxes-stacked', 'Inventario',      $currentUri, 'inventario') ?>
-        <?= navLink('almacen',       'fa-warehouse',     'Almacén',         $currentUri, 'almacen') ?>
-        <?= navLink('vehiculos',     'fa-car',           'Vehículos',       $currentUri, 'vehiculos') ?>
-        <?= navLink('bitacora',      'fa-book-open',     'Bitácora',        $currentUri, 'bitacora') ?>
+        <?= navLink('dashboard',        'fa-gauge-high',    'Dashboard',        $currentUri, 'dashboard') ?>
+        <?= navLink('inventario',       'fa-boxes-stacked', 'Inventario',       $currentUri, 'inventario') ?>
+        <?= navLink('almacen',          'fa-warehouse',     'Almacén',          $currentUri, 'almacen') ?>
+        <?= navLink('vehiculos',        'fa-car',           'Vehículos',        $currentUri, 'vehiculos') ?>
+        <?= navLink('bitacora',         'fa-book-open',     'Bitácora',         $currentUri, 'bitacora') ?>
+        <?= navLink('geolocalizacion',  'fa-map-location-dot', 'Geolocalización', $currentUri, 'geolocalizacion') ?>
 
         <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
         <div class="pt-4 mt-2">
