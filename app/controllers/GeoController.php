@@ -14,7 +14,12 @@ class GeoController extends BaseController
     {
         $this->requireAuth();
 
-        $devices  = $this->gpsModel->getAllWithAsset();
+        $devices = [];
+        try {
+            $devices = $this->gpsModel->getAllWithAsset();
+        } catch (\Throwable $e) {
+            // GPS table may not exist yet (migration pending) — show empty map
+        }
         $settings = $this->settingModel->getAllGrouped();
 
         $traccarUrl = rtrim($settings['traccar_url'] ?? '', '/');

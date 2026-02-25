@@ -129,18 +129,22 @@ class InventoryController extends BaseController
 
         // GPS device
         if (!empty($_POST['gps_unique_id'])) {
-            $gpsData = [
-                'nombre'             => htmlspecialchars(trim($_POST['gps_nombre'] ?? $data['nombre']), ENT_QUOTES, 'UTF-8'),
-                'unique_id'          => htmlspecialchars(trim($_POST['gps_unique_id']), ENT_QUOTES, 'UTF-8'),
-                'traccar_device_id'  => !empty($_POST['gps_traccar_id']) ? (int)$_POST['gps_traccar_id'] : null,
-                'telefono'           => htmlspecialchars(trim($_POST['gps_telefono'] ?? ''), ENT_QUOTES, 'UTF-8'),
-                'modelo_dispositivo' => htmlspecialchars(trim($_POST['gps_modelo'] ?? ''), ENT_QUOTES, 'UTF-8'),
-                'categoria_traccar'  => $_POST['gps_categoria'] ?? 'car',
-                'contacto'           => htmlspecialchars(trim($_POST['gps_contacto'] ?? ''), ENT_QUOTES, 'UTF-8'),
-                'grupo_id'           => !empty($_POST['gps_grupo_id']) ? (int)$_POST['gps_grupo_id'] : null,
-                'activo'             => 1,
-            ];
-            $this->gpsModel->upsertForActivo($activoId, $gpsData);
+            try {
+                $gpsData = [
+                    'nombre'             => htmlspecialchars(trim($_POST['gps_nombre'] ?? $data['nombre']), ENT_QUOTES, 'UTF-8'),
+                    'unique_id'          => htmlspecialchars(trim($_POST['gps_unique_id']), ENT_QUOTES, 'UTF-8'),
+                    'traccar_device_id'  => !empty($_POST['gps_traccar_id']) ? (int)$_POST['gps_traccar_id'] : null,
+                    'telefono'           => htmlspecialchars(trim($_POST['gps_telefono'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'modelo_dispositivo' => htmlspecialchars(trim($_POST['gps_modelo'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'categoria_traccar'  => $_POST['gps_categoria'] ?? 'car',
+                    'contacto'           => htmlspecialchars(trim($_POST['gps_contacto'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'grupo_id'           => !empty($_POST['gps_grupo_id']) ? (int)$_POST['gps_grupo_id'] : null,
+                    'activo'             => 1,
+                ];
+                $this->gpsModel->upsertForActivo($activoId, $gpsData);
+            } catch (\Throwable $e) {
+                // GPS table may not exist yet (migration pending) — skip silently
+            }
         }
 
         $this->setFlash('success', 'Activo registrado correctamente.');
@@ -159,7 +163,12 @@ class InventoryController extends BaseController
         }
 
         $arma      = $this->weaponModel->queryOne("SELECT * FROM armas WHERE activo_id = :a", [':a' => $id]);
-        $gpsDevice = $this->gpsModel->findByActivoId($id);
+        $gpsDevice = null;
+        try {
+            $gpsDevice = $this->gpsModel->findByActivoId($id);
+        } catch (\Throwable $e) {
+            // GPS table may not exist yet (migration pending) — continue without GPS data
+        }
         $users     = (new User())->getAllActive();
         $oficiales = $this->getOficiales();
 
@@ -216,20 +225,24 @@ class InventoryController extends BaseController
 
         // GPS device
         if (!empty($_POST['gps_unique_id'])) {
-            $gpsData = [
-                'nombre'             => htmlspecialchars(trim($_POST['gps_nombre'] ?? $data['nombre']), ENT_QUOTES, 'UTF-8'),
-                'unique_id'          => htmlspecialchars(trim($_POST['gps_unique_id']), ENT_QUOTES, 'UTF-8'),
-                'traccar_device_id'  => !empty($_POST['gps_traccar_id']) ? (int)$_POST['gps_traccar_id'] : null,
-                'telefono'           => htmlspecialchars(trim($_POST['gps_telefono'] ?? ''), ENT_QUOTES, 'UTF-8'),
-                'modelo_dispositivo' => htmlspecialchars(trim($_POST['gps_modelo'] ?? ''), ENT_QUOTES, 'UTF-8'),
-                'categoria_traccar'  => $_POST['gps_categoria'] ?? 'car',
-                'contacto'           => htmlspecialchars(trim($_POST['gps_contacto'] ?? ''), ENT_QUOTES, 'UTF-8'),
-                'grupo_id'           => !empty($_POST['gps_grupo_id']) ? (int)$_POST['gps_grupo_id'] : null,
-            ];
-            if (!empty($_POST['gps_device_id'])) {
-                $this->gpsModel->update((int)$_POST['gps_device_id'], $gpsData);
-            } else {
-                $this->gpsModel->upsertForActivo($id, $gpsData);
+            try {
+                $gpsData = [
+                    'nombre'             => htmlspecialchars(trim($_POST['gps_nombre'] ?? $data['nombre']), ENT_QUOTES, 'UTF-8'),
+                    'unique_id'          => htmlspecialchars(trim($_POST['gps_unique_id']), ENT_QUOTES, 'UTF-8'),
+                    'traccar_device_id'  => !empty($_POST['gps_traccar_id']) ? (int)$_POST['gps_traccar_id'] : null,
+                    'telefono'           => htmlspecialchars(trim($_POST['gps_telefono'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'modelo_dispositivo' => htmlspecialchars(trim($_POST['gps_modelo'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'categoria_traccar'  => $_POST['gps_categoria'] ?? 'car',
+                    'contacto'           => htmlspecialchars(trim($_POST['gps_contacto'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'grupo_id'           => !empty($_POST['gps_grupo_id']) ? (int)$_POST['gps_grupo_id'] : null,
+                ];
+                if (!empty($_POST['gps_device_id'])) {
+                    $this->gpsModel->update((int)$_POST['gps_device_id'], $gpsData);
+                } else {
+                    $this->gpsModel->upsertForActivo($id, $gpsData);
+                }
+            } catch (\Throwable $e) {
+                // GPS table may not exist yet (migration pending) — skip silently
             }
         }
 
