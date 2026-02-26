@@ -14,7 +14,11 @@ class VehicleController extends BaseController
 
         $perPage  = 20;
         $page     = $this->currentPage();
-        $filters  = ['estado' => $_GET['estado'] ?? ''];
+        $filters  = [
+            'estado' => $_GET['estado'] ?? '',
+            'tipo'   => $_GET['tipo']   ?? '',
+            'buscar' => $_GET['buscar'] ?? '',
+        ];
 
         $all      = $this->vehicleModel->getWithDetails($filters);
         $total    = count($all);
@@ -199,6 +203,42 @@ class VehicleController extends BaseController
 
         $this->setFlash('success', 'Vehículo actualizado correctamente.');
         $this->redirect('vehiculos');
+    }
+
+    public function export(): void
+    {
+        $this->requireAuth();
+
+        $filters = [
+            'estado' => $_GET['estado'] ?? '',
+            'tipo'   => $_GET['tipo']   ?? '',
+            'buscar' => $_GET['buscar'] ?? '',
+        ];
+
+        $vehiculos = $this->vehicleModel->getWithDetails($filters);
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="vehiculos_' . date('Ymd_His') . '.csv"');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+
+        $out = fopen('php://output', 'w');
+        fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM for Excel
+        fputcsv($out, ['Código','Nombre','Placas','Tipo','Año','Color','Estado','Kilómetros','Responsable']);
+        foreach ($vehiculos as $v) {
+            fputcsv($out, [
+                $v['codigo'],
+                $v['nombre'] ?? trim(($v['marca'] ?? '') . ' ' . ($v['modelo'] ?? '')),
+                $v['placas'] ?? '',
+                $v['tipo'],
+                $v['año'] ?? '',
+                $v['color'] ?? '',
+                $v['estado'],
+                $v['kilometraje'] ?? 0,
+                $v['responsable_nombre'] ?? '',
+            ]);
+        }
+        fclose($out);
+        exit;
     }
 
     public function delete(): void

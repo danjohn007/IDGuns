@@ -8,6 +8,8 @@ $tabs = [
     'qr'        => ['icon'=>'fa-qrcode',          'label'=>'QR API'],
     'gps'       => ['icon'=>'fa-location-dot',    'label'=>'GPS Tracker'],
     'chatbot'   => ['icon'=>'fa-robot',           'label'=>'Chatbot'],
+    'pyspark'   => ['icon'=>'fa-fire',            'label'=>'PySpark API'],
+    'catalogos' => ['icon'=>'fa-list',            'label'=>'Catálogos'],
     'bitacora_acciones' => ['icon'=>'fa-list-check', 'label'=>'Bitácora de Acciones'],
     'errores'   => ['icon'=>'fa-bug',             'label'=>'Monitor de Errores'],
     'paypal'    => ['icon'=>'fa-paypal',          'label'=>'PayPal'],
@@ -488,6 +490,109 @@ $s = $settings ?? [];
                     </button>
                 </div>
             </form>
+        </div>
+        <!-- PySpark API -->
+        <?php elseif ($currentTab === 'pyspark'): ?>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="font-semibold text-gray-800 mb-5">
+                <i class="fa-solid fa-fire mr-2 text-orange-500"></i>Configuración PySpark API
+            </h3>
+            <p class="text-sm text-gray-500 mb-4">
+                Configura la URL y el token del servicio de análisis basado en PySpark para habilitar el módulo de Análisis de Datos.
+            </p>
+            <form method="POST" action="<?= BASE_URL ?>/configuracion/guardar">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES,'UTF-8') ?>">
+                <input type="hidden" name="tab" value="pyspark">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">URL del API PySpark</label>
+                        <input type="url" name="pyspark_url"
+                               value="<?= htmlspecialchars($s['pyspark_url']??'', ENT_QUOTES,'UTF-8') ?>"
+                               placeholder="Ej. http://mi-servidor:8080/api/analyze"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <p class="text-xs text-gray-400 mt-1">URL base del endpoint REST del servicio PySpark.</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Token de Autenticación</label>
+                        <input type="text" name="pyspark_token"
+                               value="<?= htmlspecialchars($s['pyspark_token']??'', ENT_QUOTES,'UTF-8') ?>"
+                               placeholder="Bearer token o API key"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+                <div class="mt-5 flex justify-end">
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Catálogos -->
+        <?php elseif ($currentTab === 'catalogos'): ?>
+        <?php
+        $catalogSections = [
+            'activos_categoria'     => ['label'=>'Categorías de Activos',      'items'=>$catActivos     ?? []],
+            'suministros_categoria' => ['label'=>'Categorías de Suministros',  'items'=>$catSuministros ?? []],
+            'vehiculos_tipo'        => ['label'=>'Tipos de Vehículos',         'items'=>$catVehiculos   ?? []],
+        ];
+        ?>
+        <div class="space-y-6">
+            <?php foreach ($catalogSections as $tipo => $section): ?>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="font-semibold text-gray-800 mb-4"><?= htmlspecialchars($section['label'], ENT_QUOTES,'UTF-8') ?></h3>
+
+                <!-- Add form -->
+                <form method="POST" action="<?= BASE_URL ?>/configuracion/catalogo/guardar" class="flex gap-2 mb-4">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES,'UTF-8') ?>">
+                    <input type="hidden" name="catalog_tipo" value="<?= $tipo ?>">
+                    <input type="text" name="etiqueta" placeholder="Etiqueta (ej. Arma)" required
+                           class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <input type="text" name="clave" placeholder="Clave (ej. arma)" required
+                           class="w-36 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <input type="number" name="orden" placeholder="Orden" value="0" min="0"
+                           class="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <button type="submit"
+                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors">
+                        <i class="fa-solid fa-plus mr-1"></i>Agregar
+                    </button>
+                </form>
+
+                <!-- List -->
+                <?php if (empty($section['items'])): ?>
+                <p class="text-sm text-gray-400 text-center py-4">Sin entradas. Agrega la primera arriba.</p>
+                <?php else: ?>
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="text-left px-4 py-2 text-gray-500 font-medium">Etiqueta</th>
+                                <th class="text-left px-4 py-2 text-gray-500 font-medium">Clave</th>
+                                <th class="text-left px-4 py-2 text-gray-500 font-medium">Orden</th>
+                                <th class="px-4 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                        <?php foreach ($section['items'] as $item): ?>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 font-medium text-gray-800"><?= htmlspecialchars($item['etiqueta'], ENT_QUOTES,'UTF-8') ?></td>
+                            <td class="px-4 py-2 font-mono text-xs text-gray-600"><?= htmlspecialchars($item['clave'], ENT_QUOTES,'UTF-8') ?></td>
+                            <td class="px-4 py-2 text-gray-500"><?= (int)$item['orden'] ?></td>
+                            <td class="px-4 py-2 text-right">
+                                <a href="<?= BASE_URL ?>/configuracion/catalogo/eliminar/<?= (int)$item['id'] ?>"
+                                   onclick="return confirm('¿Eliminar esta entrada del catálogo?')"
+                                   class="text-red-500 hover:text-red-700 text-xs">
+                                    <i class="fa-solid fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
         </div>
         <?php endif; ?>
 

@@ -31,6 +31,7 @@ $uri = trim($uri ?: '/', '/');
 $routes = [
     ''                           => ['DashboardController', 'index'],
     'dashboard'                  => ['DashboardController', 'index'],
+    'dashboard/buscar'           => ['DashboardController', 'search'],
     'login'                      => ['AuthController',      'login'],
     'logout'                     => ['AuthController',      'logout'],
 
@@ -38,6 +39,7 @@ $routes = [
     'inventario/crear'           => ['InventoryController', 'create'],
     'inventario/guardar'         => ['InventoryController', 'store'],
     'inventario/actualizar'      => ['InventoryController', 'update'],
+    'inventario/exportar'        => ['InventoryController', 'export'],
 
     'almacen'                    => ['WarehouseController', 'index'],
     'almacen/crear'              => ['WarehouseController', 'create'],
@@ -49,10 +51,14 @@ $routes = [
     'vehiculos/crear'            => ['VehicleController',   'create'],
     'vehiculos/guardar'          => ['VehicleController',   'store'],
     'vehiculos/actualizar'       => ['VehicleController',   'update'],
+    'vehiculos/exportar'         => ['VehicleController',   'export'],
 
     'bitacora'                   => ['LogbookController',   'index'],
     'bitacora/crear'             => ['LogbookController',   'create'],
     'bitacora/guardar'           => ['LogbookController',   'store'],
+
+    'analytics'                  => ['AnalyticsController', 'index'],
+    'analytics/pyspark'          => ['AnalyticsController', 'pysparkQuery'],
 
     'admin'                      => ['AdminController',     'index'],
     'admin/usuarios'             => ['AdminController',     'users'],
@@ -64,6 +70,7 @@ $routes = [
     'configuracion'              => ['ConfigController',    'index'],
     'configuracion/guardar'      => ['ConfigController',    'save'],
     'configuracion/iot/guardar'  => ['ConfigController',    'saveIot'],
+    'configuracion/catalogo/guardar' => ['ConfigController', 'saveCatalog'],
 
     'geolocalizacion'               => ['GeoController', 'index'],
     'geolocalizacion/posiciones'    => ['GeoController', 'positions'],
@@ -82,7 +89,8 @@ $dynamicRoutes = [
     'vehiculos/eliminar'       => ['VehicleController',   'delete'],
     'admin/editar-usuario'     => ['AdminController',     'editUser'],
     'admin/eliminar-usuario'   => ['AdminController',     'deleteUser'],
-    'configuracion/iot/eliminar' => ['ConfigController',  'deleteIot'],
+    'configuracion/iot/eliminar'      => ['ConfigController',  'deleteIot'],
+    'configuracion/catalogo/eliminar' => ['ConfigController',  'deleteCatalog'],
 ];
 
 // ─── Resolve route ─────────────────────────────────────────────────────────

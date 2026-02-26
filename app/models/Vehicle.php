@@ -12,6 +12,17 @@ class Vehicle extends BaseModel
             $where .= " AND v.estado = :estado";
             $params[':estado'] = $filters['estado'];
         }
+        if (!empty($filters['tipo'])) {
+            $where .= " AND v.tipo = :tipo";
+            $params[':tipo'] = $filters['tipo'];
+        }
+        if (!empty($filters['buscar'])) {
+            $where .= " AND (a.nombre LIKE :buscar OR a.codigo LIKE :buscar2 OR v.placas LIKE :buscar3 OR u.nombre LIKE :buscar4)";
+            $params[':buscar']  = '%' . $filters['buscar'] . '%';
+            $params[':buscar2'] = '%' . $filters['buscar'] . '%';
+            $params[':buscar3'] = '%' . $filters['buscar'] . '%';
+            $params[':buscar4'] = '%' . $filters['buscar'] . '%';
+        }
 
         $sql = "SELECT v.*, a.nombre, a.codigo, a.marca, a.modelo, a.color,
                        u.nombre AS responsable_nombre

@@ -29,10 +29,20 @@ $statColor = ['activo'=>'green','baja'=>'red','mantenimiento'=>'yellow'];
         <?php endif; ?>
     </form>
     <?php if (in_array($_SESSION['user_role']??'', ['superadmin','admin'])): ?>
-    <a href="<?= BASE_URL ?>/inventario/crear"
-       class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2">
-        <i class="fa-solid fa-plus"></i> Nuevo Activo
-    </a>
+    <div class="flex gap-2">
+        <button onclick="window.print()"
+                class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+            <i class="fa-solid fa-print mr-1"></i>Imprimir
+        </button>
+        <a href="<?= BASE_URL ?>/inventario/exportar?<?= http_build_query($filters) ?>"
+           class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors">
+            <i class="fa-solid fa-file-excel mr-1"></i>Excel
+        </a>
+        <a href="<?= BASE_URL ?>/inventario/crear"
+           class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Nuevo Activo
+        </a>
+    </div>
     <?php endif; ?>
 </div>
 

@@ -250,6 +250,44 @@ class InventoryController extends BaseController
         $this->redirect('inventario');
     }
 
+    public function export(): void
+    {
+        $this->requireAuth();
+
+        $filters = [
+            'categoria' => $_GET['categoria'] ?? '',
+            'estado'    => $_GET['estado']    ?? '',
+            'buscar'    => $_GET['buscar']    ?? '',
+        ];
+
+        $activos = $this->assetModel->getWithResponsable(0, 0, $filters);
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="inventario_' . date('Ymd_His') . '.csv"');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+
+        $out = fopen('php://output', 'w');
+        fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM for Excel
+        fputcsv($out, ['Código','Nombre','Categoría','Marca','Modelo','Serie','Estado','Responsable','Ubicación','Fecha Adquisición','Valor']);
+        foreach ($activos as $a) {
+            fputcsv($out, [
+                $a['codigo'],
+                $a['nombre'],
+                $a['categoria'],
+                $a['marca'] ?? '',
+                $a['modelo'] ?? '',
+                $a['serie'] ?? '',
+                $a['estado'],
+                $a['responsable_nombre'] ?? '',
+                $a['ubicacion'] ?? '',
+                $a['fecha_adquisicion'] ?? '',
+                $a['valor'] ?? '',
+            ]);
+        }
+        fclose($out);
+        exit;
+    }
+
     public function delete(): void
     {
         $this->requireRole(['superadmin', 'admin']);

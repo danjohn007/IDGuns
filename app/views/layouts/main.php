@@ -119,6 +119,7 @@
         <?= navLink('vehiculos',        'fa-car',           'Vehículos',        $currentUri, 'vehiculos') ?>
         <?= navLink('bitacora',         'fa-book-open',     'Bitácora',         $currentUri, 'bitacora') ?>
         <?= navLink('geolocalizacion',  'fa-map-location-dot', 'Geolocalización', $currentUri, 'geolocalizacion') ?>
+        <?= navLink('analytics',        'fa-chart-line',    'Análisis de Datos', $currentUri, 'analytics') ?>
 
         <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
         <div class="pt-4 mt-2">
