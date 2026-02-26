@@ -44,7 +44,7 @@ class ConfigController extends BaseController
             'email'     => ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name'],
             'apariencia'=> ['color_primario', 'color_secundario', 'logo_url'],
             'qr'        => ['qr_api_key', 'qr_api_url'],
-            'gps'       => ['gps_api_key', 'gps_api_url', 'gps_intervalo'],
+            'gps'       => ['gps_api_key', 'gps_api_url', 'gps_intervalo', 'traccar_url', 'traccar_usuario', 'traccar_password'],
             'chatbot'   => ['chatbot_token', 'chatbot_numero', 'chatbot_activo'],
             'paypal'    => ['paypal_client_id', 'paypal_secret', 'paypal_modo'],
         ];
