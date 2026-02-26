@@ -1,3 +1,18 @@
+<!-- Global search bar -->
+<div class="mb-5">
+    <form method="GET" action="<?= BASE_URL ?>/dashboard/buscar" class="flex gap-2 max-w-xl">
+        <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+            <input type="text" name="q" placeholder="Buscar en todo el sistema (activos, vehículos, suministros…)"
+                   class="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <button type="submit"
+                class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+            Buscar
+        </button>
+    </form>
+</div>
+
 <!-- Stats cards -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <?php

@@ -95,4 +95,42 @@ class Setting extends BaseModel
              ORDER BY e.id DESC LIMIT {$limit}"
         );
     }
+
+    // ─── Catalog methods ──────────────────────────────────────────────────────
+
+    public function getCatalogByType(string $tipo): array
+    {
+        return $this->query(
+            "SELECT * FROM catalogos WHERE tipo = :t ORDER BY orden ASC, etiqueta ASC",
+            [':t' => $tipo]
+        );
+    }
+
+    public function saveCatalogItem(array $data): int
+    {
+        if (!empty($data['id'])) {
+            $id = (int) $data['id'];
+            $this->execute(
+                "UPDATE catalogos SET etiqueta=:etiqueta, clave=:clave, orden=:orden WHERE id=:id",
+                [':etiqueta'=>$data['etiqueta'],':clave'=>$data['clave'],':orden'=>$data['orden']??0,':id'=>$id]
+            );
+            return $id;
+        }
+        $this->execute(
+            "INSERT INTO catalogos (tipo,clave,etiqueta,orden,created_at) VALUES (:tipo,:clave,:etiqueta,:orden,:cr)",
+            [
+                ':tipo'    => $data['tipo'],
+                ':clave'   => $data['clave'],
+                ':etiqueta'=> $data['etiqueta'],
+                ':orden'   => $data['orden'] ?? 0,
+                ':cr'      => date('Y-m-d H:i:s'),
+            ]
+        );
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function deleteCatalogItem(int $id): bool
+    {
+        return $this->execute("DELETE FROM catalogos WHERE id = :id", [':id' => $id]);
+    }
 }

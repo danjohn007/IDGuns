@@ -4,7 +4,16 @@ $tipoLabel   = ['patrulla'=>'Patrulla','moto'=>'Moto','camioneta'=>'Camioneta','
 ?>
 <!-- Toolbar -->
 <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-    <form method="GET" action="<?= BASE_URL ?>/vehiculos" class="flex gap-2">
+    <form method="GET" action="<?= BASE_URL ?>/vehiculos" class="flex flex-wrap gap-2">
+        <input type="text" name="buscar" placeholder="Buscar placa, nombre, código…"
+               value="<?= htmlspecialchars($filters['buscar'], ENT_QUOTES,'UTF-8') ?>"
+               class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 w-52">
+        <select name="tipo" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="">Todos los tipos</option>
+            <?php foreach ($tipoLabel as $k=>$v): ?>
+            <option value="<?= $k ?>" <?= ($filters['tipo']==$k)?'selected':'' ?>><?= $v ?></option>
+            <?php endforeach; ?>
+        </select>
         <select name="estado" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
             <option value="">Todos los estados</option>
             <option value="operativo" <?= ($filters['estado']=='operativo')?'selected':'' ?>>Operativo</option>
@@ -14,16 +23,26 @@ $tipoLabel   = ['patrulla'=>'Patrulla','moto'=>'Moto','camioneta'=>'Camioneta','
         <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors">
             <i class="fa-solid fa-filter mr-1"></i>Filtrar
         </button>
-        <?php if ($filters['estado']): ?>
+        <?php if ($filters['estado'] || $filters['tipo'] || $filters['buscar']): ?>
         <a href="<?= BASE_URL ?>/vehiculos" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-200">Limpiar</a>
         <?php endif; ?>
     </form>
-    <?php if (in_array($_SESSION['user_role']??'', ['superadmin','admin'])): ?>
-    <a href="<?= BASE_URL ?>/vehiculos/crear"
-       class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-        <i class="fa-solid fa-plus mr-1"></i> Nuevo Vehículo
-    </a>
-    <?php endif; ?>
+    <div class="flex gap-2">
+        <button onclick="window.print()"
+                class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+            <i class="fa-solid fa-print mr-1"></i>Imprimir
+        </button>
+        <a href="<?= BASE_URL ?>/vehiculos/exportar?<?= http_build_query($filters) ?>"
+           class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors">
+            <i class="fa-solid fa-file-excel mr-1"></i>Excel
+        </a>
+        <?php if (in_array($_SESSION['user_role']??'', ['superadmin','admin'])): ?>
+        <a href="<?= BASE_URL ?>/vehiculos/crear"
+           class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+            <i class="fa-solid fa-plus mr-1"></i> Nuevo Vehículo
+        </a>
+        <?php endif; ?>
+    </div>
 </div>
 
 <p class="text-sm text-gray-500 mb-3">Mostrando <?= count($vehiculos) ?> de <?= $total ?> vehículos</p>
@@ -78,8 +97,10 @@ $tipoLabel   = ['patrulla'=>'Patrulla','moto'=>'Moto','camioneta'=>'Camioneta','
 <!-- Pagination -->
 <?php if ($pages > 1): ?>
 <div class="flex items-center justify-center gap-1 mt-5">
-    <?php for ($i=1; $i<=$pages; $i++): ?>
-    <a href="<?= BASE_URL ?>/vehiculos?pagina=<?= $i ?>"
+    <?php for ($i=1; $i<=$pages; $i++):
+        $q = http_build_query(array_merge($filters, ['pagina'=>$i]));
+    ?>
+    <a href="<?= BASE_URL ?>/vehiculos?<?= $q ?>"
        class="px-3 py-1.5 text-sm rounded-lg <?= $i==$page?'bg-indigo-600 text-white':'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50' ?>">
         <?= $i ?>
     </a>

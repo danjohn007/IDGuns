@@ -82,7 +82,7 @@ class BaseModel
     }
 
     /** Execute arbitrary SQL and return all rows */
-    protected function query(string $sql, array $params = []): array
+    public function query(string $sql, array $params = []): array
     {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -90,7 +90,7 @@ class BaseModel
     }
 
     /** Execute arbitrary SQL and return one row */
-    protected function queryOne(string $sql, array $params = []): ?array
+    public function queryOne(string $sql, array $params = []): ?array
     {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -99,7 +99,7 @@ class BaseModel
     }
 
     /** Execute arbitrary SQL (INSERT/UPDATE/DELETE) */
-    protected function execute(string $sql, array $params = []): bool
+    public function execute(string $sql, array $params = []): bool
     {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
