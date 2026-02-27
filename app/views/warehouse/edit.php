@@ -17,9 +17,18 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
                     <select name="categoria" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                        <?php foreach (['limpieza'=>'Limpieza','papeleria'=>'Papelería','uniforme'=>'Uniformes','municion'=>'Munición','herramienta'=>'Herramienta','otro'=>'Otro'] as $k=>$v): ?>
-                        <option value="<?= $k ?>" <?= $suministro['categoria']==$k?'selected':'' ?>><?= $v ?></option>
-                        <?php endforeach; ?>
+                        <?php if (!empty($catSuministros)): ?>
+                            <?php foreach ($catSuministros as $cat): ?>
+                            <option value="<?= htmlspecialchars($cat['clave'], ENT_QUOTES, 'UTF-8') ?>"
+                                <?= ($suministro['categoria'] == $cat['clave']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cat['etiqueta'], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php foreach (['limpieza'=>'Limpieza','papeleria'=>'Papelería','uniforme'=>'Uniformes','municion'=>'Munición','herramienta'=>'Herramienta','otro'=>'Otro'] as $k=>$v): ?>
+                            <option value="<?= $k ?>" <?= $suministro['categoria']==$k?'selected':'' ?>><?= $v ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
                 <div>

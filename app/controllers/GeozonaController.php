@@ -99,6 +99,60 @@ class GeozonaController extends BaseController
     }
 
     /**
+     * Proxy: POST /geozonas/actualizar
+     * Updates a geofence in Traccar.
+     */
+    public function update(): void
+    {
+        $this->requireRole(['superadmin', 'admin']);
+
+        if (!$this->isPost() || !$this->validateCsrf()) {
+            $this->json(['error' => 'Petición inválida'], 403);
+        }
+
+        $id     = (int) ($_POST['id'] ?? 0);
+        $nombre = htmlspecialchars(trim($_POST['nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $area   = trim($_POST['area'] ?? '');
+
+        if (!$id || empty($nombre) || empty($area)) {
+            $this->setFlash('error', 'Datos inválidos para actualizar la geozona.');
+            $this->redirect('geozonas');
+        }
+
+        $payload = [
+            'id'          => $id,
+            'name'        => $nombre,
+            'description' => htmlspecialchars(trim($_POST['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8'),
+            'area'        => $area,
+            'calendarId'  => 0,
+            'attributes'  => new \stdClass(),
+        ];
+
+        $result = $this->traccarPut('/api/geofences/' . $id, $payload);
+
+        if (!empty($result['error'])) {
+            $this->setFlash('error', 'Error al actualizar la geozona en Traccar: ' . $result['error']);
+        } else {
+            try {
+                $db = Database::getInstance();
+                $db->prepare(
+                    "UPDATE geozonas SET nombre=:nombre, descripcion=:desc, area=:area WHERE traccar_id=:tid"
+                )->execute([
+                    ':nombre' => $nombre,
+                    ':desc'   => htmlspecialchars(trim($_POST['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    ':area'   => $area,
+                    ':tid'    => $id,
+                ]);
+            } catch (\Throwable $e) {
+                // geozonas table may not exist; ignore
+            }
+            $this->setFlash('success', 'Geozona actualizada correctamente.');
+        }
+
+        $this->redirect('geozonas');
+    }
+
+    /**
      * Proxy: DELETE /geozonas/eliminar/{id}
      */
     public function delete(): void
@@ -181,6 +235,39 @@ class GeozonaController extends BaseController
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 10,
             CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_USERPWD        => $cfg['user'] . ':' . $cfg['pass'],
+            CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+
+        $response = curl_exec($ch);
+        $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($error || $code === 0) return ['error' => 'No se pudo conectar al servidor Traccar'];
+        if ($code === 401)         return ['error' => 'Credenciales Traccar incorrectas'];
+        if ($code >= 400)          return ['error' => 'Error Traccar: código ' . $code];
+
+        $decoded = json_decode($response, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function traccarPut(string $endpoint, mixed $payload): array
+    {
+        $cfg = $this->getTraccarConfig();
+        if (empty($cfg['url'])) {
+            return ['error' => 'Servidor Traccar no configurado'];
+        }
+
+        $body = json_encode($payload);
+        $ch   = curl_init($cfg['url'] . $endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_CUSTOMREQUEST  => 'PUT',
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_USERPWD        => $cfg['user'] . ':' . $cfg['pass'],
             CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,

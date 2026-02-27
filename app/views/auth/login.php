@@ -41,11 +41,34 @@
                        placeholder="••••••••">
             </div>
 
+            <!-- Math Captcha -->
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1.5">
+                    <i class="fa-solid fa-shield-halved mr-1 text-gray-500"></i>Verificación Humana
+                </label>
+                <div class="flex items-center gap-3">
+                    <span class="text-white font-semibold text-base bg-gray-700 px-4 py-2.5 rounded-lg border border-gray-600 select-none">
+                        <?= (int)($captchaA ?? 0) ?> + <?= (int)($captchaB ?? 0) ?> =
+                    </span>
+                    <input type="number" name="captcha_answer" required min="0" max="18"
+                           class="flex-1 bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2.5
+                                  placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                           placeholder="Respuesta">
+                </div>
+            </div>
+
             <button type="submit"
                     class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg
                            transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800">
                 <i class="fa-solid fa-right-to-bracket mr-2"></i>Ingresar al Sistema
             </button>
+
+            <div class="text-center">
+                <a href="<?= BASE_URL ?>/recuperar-contrasena"
+                   class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">
+                    <i class="fa-solid fa-key mr-1"></i>¿Olvidó su contraseña?
+                </a>
+            </div>
         </form>
     </div>
 

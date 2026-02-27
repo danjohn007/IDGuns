@@ -124,6 +124,48 @@
     </div>
 </div>
 
+<!-- Edit Geozona Modal -->
+<?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
+<div id="edit-gz-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+        <h3 class="font-semibold text-gray-700 mb-4 text-sm">
+            <i class="fa-solid fa-pen mr-1 text-indigo-500"></i> Editar Geozona
+        </h3>
+        <form method="POST" action="<?= BASE_URL ?>/geozonas/actualizar" id="edit-gz-form">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="id" id="edit-gz-id">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+                    <input type="text" name="nombre" id="edit-gz-nombre" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                    <input type="text" name="descripcion" id="edit-gz-desc"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Área (WKT)</label>
+                    <textarea name="area" id="edit-gz-area" rows="2" required
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-4">
+                <button type="submit"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i>Guardar cambios
+                </button>
+                <button type="button" onclick="closeEditForm()"
+                        class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -178,11 +220,17 @@ function renderList(geofences) {
                 <p class="font-mono text-[10px] text-gray-300 mt-0.5">ID Traccar: ${g.id}</p>
             </div>
             <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
-            <a href="${BASE_URL}/geozonas/eliminar/${g.id}"
-               onclick="return confirm('¿Eliminar la geozona «' + escHtml(g.name) + '»?')"
-               class="ml-2 text-red-400 hover:text-red-600 p-1" title="Eliminar">
-                <i class="fa-solid fa-trash text-xs"></i>
-            </a>
+            <div class="flex items-center gap-1 ml-2" onclick="event.stopPropagation()">
+                <button onclick="openEditForm(${g.id}, ${JSON.stringify(g.name)}, ${JSON.stringify(g.description||'')}, ${JSON.stringify(g.area||'')})"
+                   class="text-indigo-400 hover:text-indigo-600 p-1" title="Editar">
+                    <i class="fa-solid fa-pen text-xs"></i>
+                </button>
+                <a href="${BASE_URL}/geozonas/eliminar/${g.id}"
+                   onclick="return confirm('¿Eliminar la geozona «' + escHtml(g.name) + '»?')"
+                   class="text-red-400 hover:text-red-600 p-1" title="Eliminar">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </a>
+            </div>
             <?php endif; ?>
         </div>
     `).join('');
@@ -246,12 +294,12 @@ function parseAndDraw(g) {
         return L.circle([lat, lng], { radius: rad, color: '#4f46e5', fillOpacity: 0.15, weight: 2 });
     }
 
-    // POLYGON((lng lat, ...))
+    // POLYGON((lat lng, ...)) — Traccar stores coordinates as lat lng (non-standard WKT)
     const polyMatch = area.match(/^POLYGON\s*\(\s*\((.+)\)\s*\)$/i);
     if (polyMatch) {
         const coords = polyMatch[1].split(',').map(pair => {
             const parts = pair.trim().split(/\s+/);
-            return [parseFloat(parts[1]), parseFloat(parts[0])]; // [lat, lng]
+            return [parseFloat(parts[0]), parseFloat(parts[1])]; // [lat, lng] — Traccar lat-lng order
         });
         return L.polygon(coords, { color: '#4f46e5', fillOpacity: 0.15, weight: 2 });
     }
@@ -262,6 +310,18 @@ function parseAndDraw(g) {
 function toggleForm() {
     const f = document.getElementById('create-form');
     f.classList.toggle('hidden');
+}
+
+function openEditForm(id, name, desc, area) {
+    document.getElementById('edit-gz-id').value    = id;
+    document.getElementById('edit-gz-nombre').value = name;
+    document.getElementById('edit-gz-desc').value   = desc;
+    document.getElementById('edit-gz-area').value   = area;
+    document.getElementById('edit-gz-modal').classList.remove('hidden');
+}
+
+function closeEditForm() {
+    document.getElementById('edit-gz-modal').classList.add('hidden');
 }
 
 function escHtml(s) {

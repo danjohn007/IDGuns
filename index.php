@@ -34,6 +34,7 @@ $routes = [
     'dashboard/buscar'           => ['DashboardController', 'search'],
     'login'                      => ['AuthController',      'login'],
     'logout'                     => ['AuthController',      'logout'],
+    'recuperar-contrasena'       => ['AuthController',      'forgotPassword'],
 
     'inventario'                 => ['InventoryController', 'index'],
     'inventario/crear'           => ['InventoryController', 'create'],
@@ -80,14 +81,24 @@ $routes = [
     'geozonas'                      => ['GeozonaController',  'index'],
     'geozonas/listar'               => ['GeozonaController',  'list'],
     'geozonas/guardar'              => ['GeozonaController',  'store'],
+    'geozonas/actualizar'           => ['GeozonaController',  'update'],
 
     'personal'                      => ['PersonalController', 'index'],
     'personal/crear'                => ['PersonalController', 'create'],
     'personal/guardar'              => ['PersonalController', 'store'],
     'personal/actualizar'           => ['PersonalController', 'update'],
+    'personal/importar'             => ['PersonalController', 'import'],
+    'personal/procesar-importar'    => ['PersonalController', 'processImport'],
 
     'alertas'                       => ['AlertasController',  'index'],
     'alertas/guardar'               => ['AlertasController',  'store'],
+    'alertas/actualizar'            => ['AlertasController',  'updateRule'],
+
+    'perfil'                        => ['ProfileController',  'index'],
+    'perfil/actualizar'             => ['ProfileController',  'update'],
+    'perfil/cambiar-contrasena'     => ['ProfileController',  'changePassword'],
+
+    'notificaciones'                => ['NotificationsController', 'index'],
 ];
 
 // ─── Dynamic routes with numeric ID segments ───────────────────────────────
@@ -108,6 +119,7 @@ $dynamicRoutes = [
     'geozonas/eliminar'        => ['GeozonaController',   'delete'],
     'alertas/eliminar'         => ['AlertasController',   'delete'],
     'alertas/toggle'           => ['AlertasController',   'toggle'],
+    'alertas/editar'           => ['AlertasController',   'edit'],
 ];
 
 // ─── Resolve route ─────────────────────────────────────────────────────────
@@ -136,7 +148,7 @@ if (!$controller) {
 }
 
 // ─── Auth guard ────────────────────────────────────────────────────────────
-$publicRoutes = ['login', 'logout'];
+$publicRoutes = ['login', 'logout', 'recuperar-contrasena'];
 if (!in_array($uri, $publicRoutes) && !isset($_SESSION['user_id'])) {
     header('Location: ' . BASE_URL . '/login');
     exit;
