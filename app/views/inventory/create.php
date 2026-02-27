@@ -64,15 +64,13 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Responsable</label>
-                    <select name="personal_id"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">-- Sin asignar --</option>
-                        <?php foreach ($personal as $p): ?>
-                        <option value="<?= $p['id'] ?>">
-                            <?= htmlspecialchars(trim(($p['cargo'] ? $p['cargo'] . ' ' : '') . $p['nombre'] . ' ' . $p['apellidos']), ENT_QUOTES,'UTF-8') ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="relative">
+                        <input type="text" id="personal_search" autocomplete="off" placeholder="Buscar por nombre…"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <input type="hidden" name="personal_id" id="personal_id">
+                        <div id="personal_dropdown"
+                             class="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto text-sm"></div>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
@@ -270,4 +268,49 @@ function toggleGps() {
     fields.classList.toggle('hidden');
     chevron.style.transform = fields.classList.contains('hidden') ? '' : 'rotate(180deg)';
 }
+
+// ── Personal autocomplete ─────────────────────────────────────────────────────
+(function() {
+    const input    = document.getElementById('personal_search');
+    const hidden   = document.getElementById('personal_id');
+    const dropdown = document.getElementById('personal_dropdown');
+    let   timer    = null;
+
+    input.addEventListener('input', function() {
+        clearTimeout(timer);
+        const q = this.value.trim();
+        hidden.value = '';
+        if (q.length < 1) { dropdown.classList.add('hidden'); return; }
+        timer = setTimeout(() => {
+            fetch('<?= BASE_URL ?>/personal/buscar?q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(data => {
+                    dropdown.innerHTML = '';
+                    if (!data.length) {
+                        dropdown.innerHTML = '<div class="px-3 py-2 text-gray-400">Sin resultados</div>';
+                        dropdown.classList.remove('hidden');
+                        return;
+                    }
+                    data.forEach(p => {
+                        const label = [(p.cargo||''), p.nombre, p.apellidos].filter(Boolean).join(' ');
+                        const div = document.createElement('div');
+                        div.className = 'px-3 py-2 cursor-pointer hover:bg-indigo-50';
+                        div.textContent = label;
+                        div.addEventListener('mousedown', function(e) {
+                            e.preventDefault();
+                            input.value  = label;
+                            hidden.value = p.id;
+                            dropdown.classList.add('hidden');
+                        });
+                        dropdown.appendChild(div);
+                    });
+                    dropdown.classList.remove('hidden');
+                });
+        }, 200);
+    });
+
+    input.addEventListener('blur', function() {
+        setTimeout(() => dropdown.classList.add('hidden'), 150);
+    });
+})();
 </script>

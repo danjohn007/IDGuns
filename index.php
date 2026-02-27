@@ -89,6 +89,7 @@ $routes = [
     'personal/actualizar'           => ['PersonalController', 'update'],
     'personal/importar'             => ['PersonalController', 'import'],
     'personal/procesar-importar'    => ['PersonalController', 'processImport'],
+    'personal/buscar'               => ['PersonalController', 'search'],
 
     'alertas'                       => ['AlertasController',  'index'],
     'alertas/guardar'               => ['AlertasController',  'store'],

@@ -61,6 +61,29 @@ $s = $settings ?? [];
                         <input type="text" name="app_direccion" value="<?= htmlspecialchars($s['app_direccion']??'', ENT_QUOTES,'UTF-8') ?>"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Zona Horaria del Sistema</label>
+                        <select name="app_timezone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <?php
+                            $tzOptions = [
+                                'America/Mexico_City'    => 'Ciudad de México / CDMX (GMT-6)',
+                                'America/Cancun'         => 'Cancún / Quintana Roo (GMT-5)',
+                                'America/Chihuahua'      => 'Chihuahua / Hermosillo (GMT-7)',
+                                'America/Tijuana'        => 'Tijuana / Baja California (GMT-8)',
+                                'America/New_York'       => 'Nueva York (GMT-5)',
+                                'America/Chicago'        => 'Chicago (GMT-6)',
+                                'America/Denver'         => 'Denver (GMT-7)',
+                                'America/Los_Angeles'    => 'Los Ángeles (GMT-8)',
+                                'UTC'                    => 'UTC (GMT+0)',
+                            ];
+                            $currentTz = $s['app_timezone'] ?? 'America/Mexico_City';
+                            foreach ($tzOptions as $tzKey => $tzLabel): ?>
+                            <option value="<?= htmlspecialchars($tzKey, ENT_QUOTES,'UTF-8') ?>" <?= $currentTz === $tzKey ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($tzLabel, ENT_QUOTES,'UTF-8') ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
                 <div class="mt-5 flex justify-end">
                     <button type="submit" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">

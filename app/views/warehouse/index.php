@@ -4,7 +4,13 @@ $stockColor = fn($s) => match(true) {
     $s['stock_actual'] <= (int)($s['stock_minimo'] * 1.5) => ['bg'=>'yellow-100', 'text'=>'yellow-700', 'label'=>'Bajo'],
     default                                                => ['bg'=>'green-100',  'text'=>'green-700',  'label'=>'OK'],
 };
+// Build category label map from catalog (dynamic), fallback to defaults
 $catLabel = ['limpieza'=>'Limpieza','papeleria'=>'Papelería','uniforme'=>'Uniformes','municion'=>'Munición','herramienta'=>'Herramienta','otro'=>'Otro'];
+if (!empty($catSuministros)) {
+    foreach ($catSuministros as $cat) {
+        $catLabel[$cat['clave']] = $cat['etiqueta'];
+    }
+}
 ?>
 <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
     <form method="GET" action="<?= BASE_URL ?>/almacen" class="flex flex-wrap gap-2">

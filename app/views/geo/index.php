@@ -119,6 +119,7 @@
 const BASE_URL       = '<?= BASE_URL ?>';
 const TRACCAR_URL    = <?= json_encode($traccarUrl) ?>;
 const LOCAL_DEVICES  = <?= json_encode($devices) ?>;
+const TZ             = <?= json_encode($timezone ?? 'America/Mexico_City') ?>;
 
 // ── Map init ─────────────────────────────────────────────────────────────────
 const map = L.map('geo-map', { zoomControl: true }).setView([20.5888, -100.3899], 13);
@@ -251,7 +252,7 @@ function placeLocalFallbackMarkers() {
 function openDevicePopup(marker, pos, dev, local) {
     activeDeviceId = pos.deviceId;
     const speed   = pos.speed ? (pos.speed * 1.852).toFixed(1) + ' km/h' : '0.0 km/h';
-    const updated = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleString('es-MX') : '—';
+    const updated = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleString('es-MX', { timeZone: TZ }) : '—';
     const status  = dev.status === 'online' ? '<span style="color:#22c55e">● En línea</span>'
                   : dev.status === 'offline' ? '<span style="color:#94a3b8">● Sin conexión</span>'
                   : '<span style="color:#f59e0b">● Desconocido</span>';
@@ -278,6 +279,9 @@ function openDevicePopup(marker, pos, dev, local) {
             <button class="popup-btn popup-btn-green" onclick="openHistoryModal(${pos.deviceId}, '${escHtml(name)}')">
                 <i class="fa-solid fa-calendar-days"></i> Historial
             </button>
+            ${TRACCAR_URL ? `<button class="popup-btn" style="background:#7c3aed;color:#fff" onclick="openReplay(${pos.deviceId}, '${escHtml(name)}')">
+                <i class="fa-solid fa-play"></i> Repetición Ruta
+            </button>` : ''}
             <button class="popup-btn popup-btn-gray" onclick="map.closePopup()">
                 <i class="fa-solid fa-xmark"></i> Cerrar
             </button>
@@ -302,27 +306,92 @@ function openLocalPopup(marker, d) {
     marker.bindPopup(html, { maxWidth: 280 }).openPopup();
 }
 
+// ── Timezone helper ───────────────────────────────────────────────────────────
+// Returns the UTC offset string (e.g. "-06:00") for the configured timezone
+function getTzOffsetStr(tz) {
+    const now    = new Date();
+    const utcMs  = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' })).getTime();
+    const tzMs   = new Date(now.toLocaleString('en-US', { timeZone: tz })).getTime();
+    const offMin = (utcMs - tzMs) / 60000; // positive = behind UTC
+    const sign   = offMin >= 0 ? '-' : '+';
+    const abs    = Math.abs(offMin);
+    const hh     = String(Math.floor(abs / 60)).padStart(2, '0');
+    const mm     = String(abs % 60).padStart(2, '0');
+    return sign + hh + ':' + mm;
+}
+
 // ── Route: today ─────────────────────────────────────────────────────────────
 async function loadTodayRoute(deviceId, deviceName) {
     map.closePopup();
-    const today = new Date().toISOString().split('T')[0];
-    const from  = today + 'T00:00:00Z';
-    const to    = today + 'T23:59:59Z';
+    // Get today's date in configured timezone
+    const today  = new Date().toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
+    const offset = getTzOffsetStr(TZ);
+    const from   = today + 'T00:00:00' + offset;
+    const to     = today + 'T23:59:59' + offset;
     showRoutePanel(deviceName, '<span class="spinner"></span> Cargando ruta de hoy…');
 
     try {
         const res  = await fetch(`${BASE_URL}/geolocalizacion/ruta?deviceId=${deviceId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
         const data = await res.json();
-        drawRoute(data, deviceName, 'Ruta de hoy — ' + new Date().toLocaleDateString('es-MX'));
+        const label = 'Ruta de hoy — ' + new Date().toLocaleDateString('es-MX', { timeZone: TZ });
+        drawRoute(data, deviceName, label);
     } catch (e) {
         showRoutePanel(deviceName, '<span style="color:red">Error al cargar la ruta.</span>');
     }
 }
 
+// ── Route Replay (Traccar web) ────────────────────────────────────────────────
+function openReplay(deviceId, deviceName) {
+    map.closePopup();
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
+    const from  = today + 'T00:00:00.000Z';
+    const to    = today + 'T23:59:59.000Z';
+    const replayUrl = TRACCAR_URL + '/replay?deviceId=' + deviceId
+        + '&from=' + encodeURIComponent(from)
+        + '&to='   + encodeURIComponent(to);
+
+    const body = `
+        <div style="font-size:0.82rem;color:#374151">
+            <div style="margin-bottom:8px"><strong>${escHtml(deviceName)}</strong></div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+                <div>
+                    <label style="color:#64748b;font-size:0.78rem">Desde</label><br>
+                    <input type="date" id="replay-from" value="${today}" max="${today}"
+                           style="border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:0.82rem">
+                </div>
+                <div>
+                    <label style="color:#64748b;font-size:0.78rem">Hasta</label><br>
+                    <input type="date" id="replay-to" value="${today}" max="${today}"
+                           style="border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:0.82rem">
+                </div>
+            </div>
+            <a id="replay-link" href="${replayUrl}" target="_blank"
+               class="popup-btn" style="background:#7c3aed;color:#fff;display:inline-flex;text-decoration:none">
+                <i class="fa-solid fa-play"></i> Abrir Repetición Ruta
+            </a>
+        </div>`;
+    showRoutePanel('Repetición Ruta — ' + deviceName, body);
+
+    // Update link dynamically when dates change
+    ['replay-from', 'replay-to'].forEach(id => {
+        setTimeout(() => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', () => {
+                const f = (document.getElementById('replay-from')?.value || today) + 'T00:00:00.000Z';
+                const t = (document.getElementById('replay-to')?.value   || today) + 'T23:59:59.000Z';
+                const link = document.getElementById('replay-link');
+                if (link) link.href = TRACCAR_URL + '/replay?deviceId=' + deviceId
+                    + '&from=' + encodeURIComponent(f)
+                    + '&to='   + encodeURIComponent(t);
+            });
+        }, 50);
+    });
+}
+
 // ── History modal ─────────────────────────────────────────────────────────────
 function openHistoryModal(deviceId, deviceName) {
     map.closePopup();
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
     const html = `
         <div style="font-size:0.83rem">
             <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -345,8 +414,10 @@ function openHistoryModal(deviceId, deviceName) {
 }
 
 async function loadHistoryRoute(deviceId, deviceName) {
-    const from = (document.getElementById('hist-from')?.value || new Date().toISOString().split('T')[0]) + 'T00:00:00Z';
-    const to   = (document.getElementById('hist-to')?.value   || new Date().toISOString().split('T')[0]) + 'T23:59:59Z';
+    const today  = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+    const offset = getTzOffsetStr(TZ);
+    const from = (document.getElementById('hist-from')?.value || today) + 'T00:00:00' + offset;
+    const to   = (document.getElementById('hist-to')?.value   || today) + 'T23:59:59' + offset;
     showRoutePanel('Historial — ' + deviceName, '<span class="spinner"></span> Cargando historial…');
 
     try {

@@ -219,6 +219,35 @@ class PersonalController extends BaseController
         $this->redirect('personal');
     }
 
+    /**
+     * API: GET /personal/buscar?q=...
+     * Returns JSON list of active personal matching the search term.
+     */
+    public function search(): void
+    {
+        $this->requireAuth();
+        $q = trim($_GET['q'] ?? '');
+        if (strlen($q) < 1) {
+            header('Content-Type: application/json');
+            echo json_encode([]);
+            exit;
+        }
+        $db   = Database::getInstance();
+        $stmt = $db->prepare(
+            "SELECT id, nombre, apellidos, cargo FROM personal
+             WHERE activo = 1
+               AND (nombre LIKE :q OR apellidos LIKE :q2 OR CONCAT(nombre,' ',apellidos) LIKE :q3)
+             ORDER BY nombre ASC, apellidos ASC
+             LIMIT 20"
+        );
+        $like = '%' . $q . '%';
+        $stmt->execute([':q' => $like, ':q2' => $like, ':q3' => $like]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        header('Content-Type: application/json');
+        echo json_encode($rows);
+        exit;
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private function getCargos(): array
