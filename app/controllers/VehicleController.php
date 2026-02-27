@@ -43,13 +43,15 @@ class VehicleController extends BaseController
     {
         $this->requireRole(['superadmin', 'admin']);
 
-        $users = (new User())->getAllActive();
+        $personal    = $this->getPersonal();
+        $catVehiculos = $this->getCatalog('vehiculos_tipo');
 
         $this->render('vehicle/create', [
-            'title' => 'Nuevo Vehículo',
-            'flash' => $this->getFlash(),
-            'users' => $users,
-            'csrf'  => $this->csrfToken(),
+            'title'        => 'Nuevo Vehículo',
+            'flash'        => $this->getFlash(),
+            'personal'     => $personal,
+            'catVehiculos' => $catVehiculos,
+            'csrf'         => $this->csrfToken(),
         ]);
     }
 
@@ -84,6 +86,15 @@ class VehicleController extends BaseController
 
         $activoId = $assetModel->insert($assetData);
 
+        // Set personal_id separately (column may not exist until migration v3 is run)
+        if (!empty($_POST['personal_id'])) {
+            try {
+                Database::getInstance()->prepare(
+                    "UPDATE activos SET personal_id = :pid WHERE id = :id"
+                )->execute([':pid' => (int)$_POST['personal_id'], ':id' => $activoId]);
+            } catch (\Throwable $e) { /* column not yet available */ }
+        }
+
         // Then create vehiculo record
         $vehicleData = [
             'activo_id'      => $activoId,
@@ -97,7 +108,17 @@ class VehicleController extends BaseController
             'created_at'     => date('Y-m-d H:i:s'),
         ];
 
-        $this->vehicleModel->insert($vehicleData);
+        $vehicleId = $this->vehicleModel->insert($vehicleData);
+
+        // Set personal_id on vehiculo separately
+        if (!empty($_POST['personal_id'])) {
+            try {
+                Database::getInstance()->prepare(
+                    "UPDATE vehiculos SET personal_id = :pid WHERE id = :id"
+                )->execute([':pid' => (int)$_POST['personal_id'], ':id' => $vehicleId]);
+            } catch (\Throwable $e) { /* column not yet available */ }
+        }
+
         $this->setFlash('success', 'Vehículo registrado correctamente.');
         $this->redirect('vehiculos');
     }
@@ -116,7 +137,8 @@ class VehicleController extends BaseController
 
         $mantenimientos = $this->vehicleModel->getMantenimientos($id);
         $combustibles   = $this->vehicleModel->getCombustible($id, 10);
-        $users          = (new User())->getAllActive();
+        $personal       = $this->getPersonal();
+        $catVehiculos   = $this->getCatalog('vehiculos_tipo');
 
         $this->render('vehicle/edit', [
             'title'          => 'Editar Vehículo',
@@ -124,7 +146,8 @@ class VehicleController extends BaseController
             'vehicle'        => $vehicle,
             'mantenimientos' => $mantenimientos,
             'combustibles'   => $combustibles,
-            'users'          => $users,
+            'personal'       => $personal,
+            'catVehiculos'   => $catVehiculos,
             'csrf'           => $this->csrfToken(),
         ]);
     }
@@ -164,6 +187,16 @@ class VehicleController extends BaseController
             'kilometraje'    => (int) ($_POST['kilometraje'] ?? 0),
             'responsable_id' => !empty($_POST['responsable_id']) ? (int)$_POST['responsable_id'] : null,
         ]);
+
+        // Set personal_id separately (column may not exist until migration v3 is run)
+        try {
+            $personalId = !empty($_POST['personal_id']) ? (int)$_POST['personal_id'] : null;
+            $db = Database::getInstance();
+            $db->prepare("UPDATE vehiculos SET personal_id = :pid WHERE id = :id")
+               ->execute([':pid' => $personalId, ':id' => $id]);
+            $db->prepare("UPDATE activos SET personal_id = :pid WHERE id = :id")
+               ->execute([':pid' => $personalId, ':id' => $activoId]);
+        } catch (\Throwable $e) { /* column not yet available */ }
 
         // Add maintenance record if provided
         if (!empty($_POST['mantenimiento_tipo'])) {
@@ -251,5 +284,23 @@ class VehicleController extends BaseController
             $this->setFlash('success', 'Vehículo eliminado.');
         }
         $this->redirect('vehiculos');
+    }
+
+    private function getPersonal(): array
+    {
+        try {
+            return (new Personal())->getAllActive();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function getCatalog(string $tipo): array
+    {
+        try {
+            return (new Setting())->getCatalogByType($tipo);
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 }

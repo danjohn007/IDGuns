@@ -535,6 +535,7 @@ $s = $settings ?? [];
             'activos_categoria'     => ['label'=>'Categorías de Activos',      'items'=>$catActivos     ?? []],
             'suministros_categoria' => ['label'=>'Categorías de Suministros',  'items'=>$catSuministros ?? []],
             'vehiculos_tipo'        => ['label'=>'Tipos de Vehículos',         'items'=>$catVehiculos   ?? []],
+            'personal_cargo'        => ['label'=>'Cargos del Personal',        'items'=>$catCargos      ?? []],
         ];
         ?>
         <div class="space-y-6">

@@ -20,9 +20,18 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                     <select name="tipo" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <?php if (!empty($catVehiculos)): ?>
+                        <?php foreach ($catVehiculos as $cat): ?>
+                        <option value="<?= htmlspecialchars($cat['clave'], ENT_QUOTES,'UTF-8') ?>"
+                            <?= ($vehicle['tipo']==$cat['clave'])?'selected':'' ?>>
+                            <?= htmlspecialchars($cat['etiqueta'], ENT_QUOTES,'UTF-8') ?>
+                        </option>
+                        <?php endforeach; ?>
+                        <?php else: ?>
                         <?php foreach (['patrulla'=>'Patrulla','moto'=>'Moto','camioneta'=>'Camioneta','otro'=>'Otro'] as $k=>$v): ?>
                         <option value="<?= $k ?>" <?= ($vehicle['tipo']==$k)?'selected':'' ?>><?= $v ?></option>
                         <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
                 <div>
@@ -70,10 +79,12 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Responsable</label>
-                    <select name="responsable_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                    <select name="personal_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <option value="">-- Sin asignar --</option>
-                        <?php foreach ($users as $u): ?>
-                        <option value="<?= $u['id'] ?>" <?= ($vehicle['responsable_id']==$u['id'])?'selected':'' ?>><?= htmlspecialchars($u['nombre'], ENT_QUOTES,'UTF-8') ?></option>
+                        <?php foreach ($personal as $p): ?>
+                        <option value="<?= $p['id'] ?>" <?= (($vehicle['personal_id'] ?? '')==$p['id'])?'selected':'' ?>>
+                            <?= htmlspecialchars(trim(($p['cargo'] ? $p['cargo'] . ' ' : '') . $p['nombre'] . ' ' . $p['apellidos']), ENT_QUOTES,'UTF-8') ?>
+                        </option>
                         <?php endforeach; ?>
                     </select>
                 </div>

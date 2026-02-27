@@ -117,8 +117,11 @@
         <?= navLink('inventario',       'fa-boxes-stacked', 'Inventario',       $currentUri, 'inventario') ?>
         <?= navLink('almacen',          'fa-warehouse',     'Almacén',          $currentUri, 'almacen') ?>
         <?= navLink('vehiculos',        'fa-car',           'Vehículos',        $currentUri, 'vehiculos') ?>
+        <?= navLink('personal',         'fa-id-badge',      'Personal',         $currentUri, 'personal') ?>
         <?= navLink('bitacora',         'fa-book-open',     'Bitácora',         $currentUri, 'bitacora') ?>
         <?= navLink('geolocalizacion',  'fa-map-location-dot', 'Geolocalización', $currentUri, 'geolocalizacion') ?>
+        <?= navLink('geozonas',         'fa-draw-polygon',  'Geozonas',         $currentUri, 'geozonas') ?>
+        <?= navLink('alertas',          'fa-bell',          'Alertas',          $currentUri, 'alertas') ?>
         <?= navLink('analytics',        'fa-chart-line',    'Análisis de Datos', $currentUri, 'analytics') ?>
 
         <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>

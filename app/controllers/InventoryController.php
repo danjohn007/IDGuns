@@ -47,15 +47,17 @@ class InventoryController extends BaseController
     {
         $this->requireRole(['superadmin', 'admin']);
 
-        $users     = (new User())->getAllActive();
+        $personal  = $this->getPersonal();
         $oficiales = $this->getOficiales();
+        $catActivos = $this->getCatalog('activos_categoria');
 
         $this->render('inventory/create', [
-            'title'     => 'Nuevo Activo',
-            'flash'     => $this->getFlash(),
-            'users'     => $users,
-            'oficiales' => $oficiales,
-            'csrf'      => $this->csrfToken(),
+            'title'      => 'Nuevo Activo',
+            'flash'      => $this->getFlash(),
+            'personal'   => $personal,
+            'oficiales'  => $oficiales,
+            'catActivos' => $catActivos,
+            'csrf'       => $this->csrfToken(),
         ]);
     }
 
@@ -91,6 +93,15 @@ class InventoryController extends BaseController
         }
 
         $activoId = $this->assetModel->insert($data);
+
+        // Set personal_id separately (column may not exist until migration v3 is run)
+        if (!empty($_POST['personal_id'])) {
+            try {
+                Database::getInstance()->prepare(
+                    "UPDATE activos SET personal_id = :pid WHERE id = :id"
+                )->execute([':pid' => (int)$_POST['personal_id'], ':id' => $activoId]);
+            } catch (\Throwable $e) { /* column not yet available */ }
+        }
 
         // If weapon, also insert into armas
         if ($categoria === 'arma' && !empty($_POST['arma_tipo'])) {
@@ -169,18 +180,20 @@ class InventoryController extends BaseController
         } catch (\Throwable $e) {
             // GPS table may not exist yet (migration pending) — continue without GPS data
         }
-        $users     = (new User())->getAllActive();
-        $oficiales = $this->getOficiales();
+        $personal   = $this->getPersonal();
+        $oficiales  = $this->getOficiales();
+        $catActivos = $this->getCatalog('activos_categoria');
 
         $this->render('inventory/edit', [
-            'title'     => 'Editar Activo',
-            'flash'     => $this->getFlash(),
-            'activo'    => $activo,
-            'arma'      => $arma,
-            'gpsDevice' => $gpsDevice,
-            'users'     => $users,
-            'oficiales' => $oficiales,
-            'csrf'      => $this->csrfToken(),
+            'title'      => 'Editar Activo',
+            'flash'      => $this->getFlash(),
+            'activo'     => $activo,
+            'arma'       => $arma,
+            'gpsDevice'  => $gpsDevice,
+            'personal'   => $personal,
+            'oficiales'  => $oficiales,
+            'catActivos' => $catActivos,
+            'csrf'       => $this->csrfToken(),
         ]);
     }
 
@@ -208,6 +221,14 @@ class InventoryController extends BaseController
         ];
 
         $this->assetModel->update($id, $data);
+
+        // Set personal_id separately (column may not exist until migration v3 is run)
+        try {
+            $personalId = !empty($_POST['personal_id']) ? (int)$_POST['personal_id'] : null;
+            Database::getInstance()->prepare(
+                "UPDATE activos SET personal_id = :pid WHERE id = :id"
+            )->execute([':pid' => $personalId, ':id' => $id]);
+        } catch (\Throwable $e) { /* column not yet available */ }
 
         // Update weapon details if applicable
         if (!empty($_POST['arma_id'])) {
@@ -305,5 +326,23 @@ class InventoryController extends BaseController
         $db   = Database::getInstance();
         $stmt = $db->query("SELECT * FROM oficiales WHERE activo = 1 ORDER BY nombre ASC");
         return $stmt->fetchAll();
+    }
+
+    private function getPersonal(): array
+    {
+        try {
+            return (new Personal())->getAllActive();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function getCatalog(string $tipo): array
+    {
+        try {
+            return (new Setting())->getCatalogByType($tipo);
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 }

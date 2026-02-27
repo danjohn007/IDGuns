@@ -25,30 +25,60 @@ class Vehicle extends BaseModel
         }
 
         $sql = "SELECT v.*, a.nombre, a.codigo, a.marca, a.modelo, a.color,
-                       u.nombre AS responsable_nombre
+                       COALESCE(NULLIF(CONCAT_WS(' ', p.cargo, p.nombre, p.apellidos), ''), u.nombre) AS responsable_nombre
                 FROM vehiculos v
                 JOIN activos a ON v.activo_id = a.id
+                LEFT JOIN personal p ON v.personal_id = p.id
                 LEFT JOIN users u ON v.responsable_id = u.id
                 {$where}
                 ORDER BY v.id DESC";
 
         if ($limit > 0) $sql .= " LIMIT {$limit} OFFSET {$offset}";
 
-        return $this->query($sql, $params);
+        try {
+            return $this->query($sql, $params);
+        } catch (\Throwable $e) {
+            // personal_id column may not exist yet
+            $sqlFallback = "SELECT v.*, a.nombre, a.codigo, a.marca, a.modelo, a.color,
+                       u.nombre AS responsable_nombre
+                FROM vehiculos v
+                JOIN activos a ON v.activo_id = a.id
+                LEFT JOIN users u ON v.responsable_id = u.id
+                {$where}
+                ORDER BY v.id DESC";
+            if ($limit > 0) $sqlFallback .= " LIMIT {$limit} OFFSET {$offset}";
+            return $this->query($sqlFallback, $params);
+        }
     }
 
     public function getById(int $id): ?array
     {
-        return $this->queryOne(
-            "SELECT v.*, a.nombre, a.codigo, a.marca, a.modelo, a.color,
-                    a.descripcion, a.fecha_adquisicion, a.valor, a.ubicacion,
-                    u.nombre AS responsable_nombre
-             FROM vehiculos v
-             JOIN activos a ON v.activo_id = a.id
-             LEFT JOIN users u ON v.responsable_id = u.id
-             WHERE v.id = :id",
-            [':id' => $id]
-        );
+        try {
+            return $this->queryOne(
+                "SELECT v.*, a.nombre, a.codigo, a.marca, a.modelo, a.color,
+                        a.descripcion, a.fecha_adquisicion, a.valor, a.ubicacion,
+                        a.personal_id,
+                        COALESCE(NULLIF(CONCAT_WS(' ', p.cargo, p.nombre, p.apellidos), ''), u.nombre) AS responsable_nombre
+                 FROM vehiculos v
+                 JOIN activos a ON v.activo_id = a.id
+                 LEFT JOIN personal p ON v.personal_id = p.id
+                 LEFT JOIN users u ON v.responsable_id = u.id
+                 WHERE v.id = :id",
+                [':id' => $id]
+            );
+        } catch (\Throwable $e) {
+            // personal_id column may not exist yet
+            return $this->queryOne(
+                "SELECT v.*, a.nombre, a.codigo, a.marca, a.modelo, a.color,
+                        a.descripcion, a.fecha_adquisicion, a.valor, a.ubicacion,
+                        u.nombre AS responsable_nombre
+                 FROM vehiculos v
+                 JOIN activos a ON v.activo_id = a.id
+                 LEFT JOIN users u ON v.responsable_id = u.id
+                 WHERE v.id = :id",
+                [':id' => $id]
+            );
+        }
     }
 
     public function countOperativos(): int
