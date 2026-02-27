@@ -179,7 +179,7 @@ function renderList(geofences) {
             </div>
             <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
             <a href="${BASE_URL}/geozonas/eliminar/${g.id}"
-               onclick="return confirm('¿Eliminar la geozona «' + g.name + '»?')"
+               onclick="return confirm('¿Eliminar la geozona «' + escHtml(g.name) + '»?')"
                class="ml-2 text-red-400 hover:text-red-600 p-1" title="Eliminar">
                 <i class="fa-solid fa-trash text-xs"></i>
             </a>

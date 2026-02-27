@@ -80,8 +80,8 @@ class GeozonaController extends BaseController
             try {
                 $db = Database::getInstance();
                 $db->prepare(
-                    "INSERT IGNORE INTO geozonas (traccar_id, nombre, descripcion, area, created_at)
-                     VALUES (:tid, :nombre, :desc, :area, :cr)"
+                    "INSERT IGNORE INTO geozonas (traccar_id, nombre, descripcion, area, activo, created_at)
+                     VALUES (:tid, :nombre, :desc, :area, 1, :cr)"
                 )->execute([
                     ':tid'    => $result['id'] ?? null,
                     ':nombre' => $nombre,
