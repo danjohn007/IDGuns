@@ -22,10 +22,12 @@ class ConfigController extends BaseController
         $catActivos     = [];
         $catSuministros = [];
         $catVehiculos   = [];
+        $catCargos      = [];
         try {
             $catActivos     = $this->settingModel->getCatalogByType('activos_categoria');
             $catSuministros = $this->settingModel->getCatalogByType('suministros_categoria');
             $catVehiculos   = $this->settingModel->getCatalogByType('vehiculos_tipo');
+            $catCargos      = $this->settingModel->getCatalogByType('personal_cargo');
         } catch (\Throwable $e) {
             // catalogos table may not exist yet
         }
@@ -41,6 +43,7 @@ class ConfigController extends BaseController
             'catActivos'     => $catActivos,
             'catSuministros' => $catSuministros,
             'catVehiculos'   => $catVehiculos,
+            'catCargos'      => $catCargos,
         ]);
     }
 
@@ -146,7 +149,7 @@ class ConfigController extends BaseController
         $orden    = (int) ($_POST['orden'] ?? 0);
         $id       = (int) ($_POST['id']    ?? 0);
 
-        $allowedTipos = ['activos_categoria', 'suministros_categoria', 'vehiculos_tipo'];
+        $allowedTipos = ['activos_categoria', 'suministros_categoria', 'vehiculos_tipo', 'personal_cargo'];
         if (!in_array($tipo, $allowedTipos) || empty($etiqueta) || empty($clave)) {
             $this->setFlash('error', 'Datos inválidos para el catálogo.');
             $this->redirect('configuracion?tab=catalogos');

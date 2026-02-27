@@ -76,6 +76,18 @@ $routes = [
     'geolocalizacion/posiciones'    => ['GeoController', 'positions'],
     'geolocalizacion/ruta'          => ['GeoController', 'route'],
     'geolocalizacion/dispositivos'  => ['GeoController', 'apiDevices'],
+
+    'geozonas'                      => ['GeozonaController',  'index'],
+    'geozonas/listar'               => ['GeozonaController',  'list'],
+    'geozonas/guardar'              => ['GeozonaController',  'store'],
+
+    'personal'                      => ['PersonalController', 'index'],
+    'personal/crear'                => ['PersonalController', 'create'],
+    'personal/guardar'              => ['PersonalController', 'store'],
+    'personal/actualizar'           => ['PersonalController', 'update'],
+
+    'alertas'                       => ['AlertasController',  'index'],
+    'alertas/guardar'               => ['AlertasController',  'store'],
 ];
 
 // ─── Dynamic routes with numeric ID segments ───────────────────────────────
@@ -91,6 +103,11 @@ $dynamicRoutes = [
     'admin/eliminar-usuario'   => ['AdminController',     'deleteUser'],
     'configuracion/iot/eliminar'      => ['ConfigController',  'deleteIot'],
     'configuracion/catalogo/eliminar' => ['ConfigController',  'deleteCatalog'],
+    'personal/editar'          => ['PersonalController',  'edit'],
+    'personal/eliminar'        => ['PersonalController',  'delete'],
+    'geozonas/eliminar'        => ['GeozonaController',   'delete'],
+    'alertas/eliminar'         => ['AlertasController',   'delete'],
+    'alertas/toggle'           => ['AlertasController',   'toggle'],
 ];
 
 // ─── Resolve route ─────────────────────────────────────────────────────────

@@ -23,8 +23,9 @@ class Asset extends BaseModel
             $params[':buscar3'] = '%' . $filters['buscar'] . '%';
         }
 
-        $sql = "SELECT a.*, u.nombre AS responsable_nombre
+        $sql = "SELECT a.*, COALESCE(NULLIF(CONCAT_WS(' ', p.cargo, p.nombre, p.apellidos), ''), u.nombre) AS responsable_nombre
                 FROM activos a
+                LEFT JOIN personal p ON a.personal_id = p.id
                 LEFT JOIN users u ON a.responsable_id = u.id
                 {$where}
                 ORDER BY a.id DESC";
@@ -33,7 +34,18 @@ class Asset extends BaseModel
             $sql .= " LIMIT {$limit} OFFSET {$offset}";
         }
 
-        return $this->query($sql, $params);
+        try {
+            return $this->query($sql, $params);
+        } catch (\Throwable $e) {
+            // personal_id column may not exist yet; fall back to users only
+            $sqlFallback = "SELECT a.*, u.nombre AS responsable_nombre
+                FROM activos a
+                LEFT JOIN users u ON a.responsable_id = u.id
+                {$where}
+                ORDER BY a.id DESC";
+            if ($limit > 0) $sqlFallback .= " LIMIT {$limit} OFFSET {$offset}";
+            return $this->query($sqlFallback, $params);
+        }
     }
 
     public function countFiltered(array $filters = []): int
