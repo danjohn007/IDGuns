@@ -23,12 +23,14 @@ class GeoController extends BaseController
         $settings = $this->settingModel->getAllGrouped();
 
         $traccarUrl = rtrim($settings['traccar_url'] ?? '', '/');
+        $timezone   = $settings['app_timezone'] ?? 'America/Mexico_City';
 
         $this->render('geo/index', [
             'title'      => 'Geolocalización',
             'flash'      => $this->getFlash(),
             'devices'    => $devices,
             'traccarUrl' => $traccarUrl,
+            'timezone'   => $timezone,
             'csrf'       => $this->csrfToken(),
         ]);
     }

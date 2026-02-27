@@ -31,18 +31,26 @@ class WarehouseController extends BaseController
         $users     = (new User())->getAllActive();
         $oficiales = $this->getOficiales();
 
+        $catSuministros = [];
+        try {
+            $catSuministros = (new Setting())->getCatalogByType('suministros_categoria');
+        } catch (\Throwable $e) {
+            // catalogos table may not exist
+        }
+
         $this->render('warehouse/index', [
-            'title'       => 'Almacén',
-            'flash'       => $this->getFlash(),
-            'suministros' => $suministros,
-            'lowStock'    => $lowStock,
-            'recientes'   => $recientes,
-            'filters'     => $filters,
-            'page'        => $page,
-            'pages'       => $pages,
-            'total'       => $total,
-            'users'       => $users,
-            'oficiales'   => $oficiales,
+            'title'          => 'Almacén',
+            'flash'          => $this->getFlash(),
+            'suministros'    => $suministros,
+            'lowStock'       => $lowStock,
+            'recientes'      => $recientes,
+            'filters'        => $filters,
+            'page'           => $page,
+            'pages'          => $pages,
+            'total'          => $total,
+            'users'          => $users,
+            'oficiales'      => $oficiales,
+            'catSuministros' => $catSuministros,
         ]);
     }
 

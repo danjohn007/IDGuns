@@ -60,7 +60,7 @@ class ConfigController extends BaseController
 
         // Map of allowed settings keys per tab
         $allowedKeys = [
-            'general'   => ['app_nombre', 'app_telefono', 'app_horario', 'app_direccion'],
+            'general'   => ['app_nombre', 'app_telefono', 'app_horario', 'app_direccion', 'app_timezone'],
             'email'     => ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name'],
             'apariencia'=> ['color_primario', 'color_secundario', 'logo_url'],
             'qr'        => ['qr_api_key', 'qr_api_url'],
