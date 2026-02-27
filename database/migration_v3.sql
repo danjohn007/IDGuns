@@ -1,6 +1,7 @@
 -- =============================================================================
 -- IDGuns — Migración v3: Personal, Geozonas, Alertas y Catálogos
 -- Ejecutar sobre la base de datos existente (residenc_idguns)
+-- Compatible con MySQL 5.7.x (sin ADD COLUMN IF NOT EXISTS / ADD CONSTRAINT IF NOT EXISTS)
 -- =============================================================================
 
 SET NAMES utf8mb4;
@@ -25,37 +26,107 @@ CREATE TABLE IF NOT EXISTS `personal` (
 -- 2. Agregar personal_id a activos (responsable desde módulo personal)
 --    Mantenemos responsable_id (→ users) para compatibilidad con registros previos
 -- -----------------------------------------------------------------------------
-ALTER TABLE `activos`
-    ADD COLUMN IF NOT EXISTS `personal_id` INT UNSIGNED DEFAULT NULL
-        COMMENT 'Responsable del activo (tabla personal)' AFTER `responsable_id`;
 
-ALTER TABLE `activos`
-    ADD CONSTRAINT IF NOT EXISTS `fk_activos_personal`
-        FOREIGN KEY (`personal_id`) REFERENCES `personal`(`id`) ON DELETE SET NULL;
+-- 2.1 Agregar columna personal_id si no existe (MySQL 5.7)
+SET @col_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'activos'
+    AND COLUMN_NAME = 'personal_id'
+);
+
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE `activos`
+     ADD COLUMN `personal_id` INT UNSIGNED DEFAULT NULL
+     COMMENT ''Responsable del activo (tabla personal)''
+     AFTER `responsable_id`',
+  'SELECT ''[SKIP] activos.personal_id ya existe'';'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- 2.2 Agregar FK si no existe (MySQL 5.7)
+SET @fk_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.TABLE_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'activos'
+    AND CONSTRAINT_NAME = 'fk_activos_personal'
+    AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+
+SET @sql := IF(@fk_exists = 0,
+  'ALTER TABLE `activos`
+     ADD CONSTRAINT `fk_activos_personal`
+     FOREIGN KEY (`personal_id`) REFERENCES `personal`(`id`) ON DELETE SET NULL',
+  'SELECT ''[SKIP] fk_activos_personal ya existe'';'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- -----------------------------------------------------------------------------
 -- 3. Agregar personal_id a vehiculos
 -- -----------------------------------------------------------------------------
-ALTER TABLE `vehiculos`
-    ADD COLUMN IF NOT EXISTS `personal_id` INT UNSIGNED DEFAULT NULL
-        COMMENT 'Responsable del vehículo (tabla personal)' AFTER `responsable_id`;
 
-ALTER TABLE `vehiculos`
-    ADD CONSTRAINT IF NOT EXISTS `fk_vehiculos_personal`
-        FOREIGN KEY (`personal_id`) REFERENCES `personal`(`id`) ON DELETE SET NULL;
+-- 3.1 Agregar columna personal_id si no existe (MySQL 5.7)
+SET @col_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'vehiculos'
+    AND COLUMN_NAME = 'personal_id'
+);
+
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE `vehiculos`
+     ADD COLUMN `personal_id` INT UNSIGNED DEFAULT NULL
+     COMMENT ''Responsable del vehículo (tabla personal)''
+     AFTER `responsable_id`',
+  'SELECT ''[SKIP] vehiculos.personal_id ya existe'';'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- 3.2 Agregar FK si no existe (MySQL 5.7)
+SET @fk_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.TABLE_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'vehiculos'
+    AND CONSTRAINT_NAME = 'fk_vehiculos_personal'
+    AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+
+SET @sql := IF(@fk_exists = 0,
+  'ALTER TABLE `vehiculos`
+     ADD CONSTRAINT `fk_vehiculos_personal`
+     FOREIGN KEY (`personal_id`) REFERENCES `personal`(`id`) ON DELETE SET NULL',
+  'SELECT ''[SKIP] fk_vehiculos_personal ya existe'';'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- -----------------------------------------------------------------------------
 -- 4. Catalog entries: personal_cargo (cargos del personal)
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO `catalogos` (`tipo`, `clave`, `etiqueta`, `orden`) VALUES
-('personal_cargo', 'comandante',    'Comandante',    1),
-('personal_cargo', 'subcomandante', 'Subcomandante', 2),
-('personal_cargo', 'teniente',      'Teniente',      3),
-('personal_cargo', 'sargento',      'Sargento',      4),
-('personal_cargo', 'cabo',          'Cabo',          5),
-('personal_cargo', 'policia',       'Policía',       6),
-('personal_cargo', 'administrativo','Administrativo',7),
-('personal_cargo', 'otro',          'Otro',          8);
+('personal_cargo', 'comandante',     'Comandante',     1),
+('personal_cargo', 'subcomandante',  'Subcomandante',  2),
+('personal_cargo', 'teniente',       'Teniente',       3),
+('personal_cargo', 'sargento',       'Sargento',       4),
+('personal_cargo', 'cabo',           'Cabo',           5),
+('personal_cargo', 'policia',        'Policía',        6),
+('personal_cargo', 'administrativo', 'Administrativo', 7),
+('personal_cargo', 'otro',           'Otro',           8);
 
 -- -----------------------------------------------------------------------------
 -- 5. geozonas_locales — registro local de geofences sincronizados con Traccar
