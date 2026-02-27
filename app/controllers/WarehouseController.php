@@ -50,10 +50,19 @@ class WarehouseController extends BaseController
     {
         $this->requireRole(['superadmin', 'admin', 'almacen']);
 
+        $catSuministros = [];
+        try {
+            $settingModel   = new Setting();
+            $catSuministros = $settingModel->getCatalogByType('suministros_categoria');
+        } catch (\Throwable $e) {
+            // catalogos table may not exist
+        }
+
         $this->render('warehouse/create', [
-            'title' => 'Nuevo Suministro',
-            'flash' => $this->getFlash(),
-            'csrf'  => $this->csrfToken(),
+            'title'          => 'Nuevo Suministro',
+            'flash'          => $this->getFlash(),
+            'csrf'           => $this->csrfToken(),
+            'catSuministros' => $catSuministros,
         ]);
     }
 
@@ -101,14 +110,22 @@ class WarehouseController extends BaseController
             $this->redirect('almacen');
         }
 
-        $movimientos = $this->supplyModel->getMovimientos($id, 15);
+        $movimientos    = $this->supplyModel->getMovimientos($id, 15);
+        $catSuministros = [];
+        try {
+            $settingModel   = new Setting();
+            $catSuministros = $settingModel->getCatalogByType('suministros_categoria');
+        } catch (\Throwable $e) {
+            // catalogos table may not exist
+        }
 
         $this->render('warehouse/edit', [
-            'title'       => 'Editar Suministro',
-            'flash'       => $this->getFlash(),
-            'suministro'  => $suministro,
-            'movimientos' => $movimientos,
-            'csrf'        => $this->csrfToken(),
+            'title'          => 'Editar Suministro',
+            'flash'          => $this->getFlash(),
+            'suministro'     => $suministro,
+            'movimientos'    => $movimientos,
+            'csrf'           => $this->csrfToken(),
+            'catSuministros' => $catSuministros,
         ]);
     }
 

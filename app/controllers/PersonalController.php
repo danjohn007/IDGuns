@@ -123,6 +123,90 @@ class PersonalController extends BaseController
         $this->redirect('personal');
     }
 
+    public function import(): void
+    {
+        $this->requireRole(['superadmin', 'admin']);
+
+        $this->render('personal/import', [
+            'title' => 'Importar Personal desde CSV',
+            'flash' => $this->getFlash(),
+            'csrf'  => $this->csrfToken(),
+        ]);
+    }
+
+    public function processImport(): void
+    {
+        $this->requireRole(['superadmin', 'admin']);
+
+        if (!$this->isPost() || !$this->validateCsrf()) {
+            $this->setFlash('error', 'Petición inválida.');
+            $this->redirect('personal/importar');
+        }
+
+        if (empty($_FILES['archivo']['tmp_name']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
+            $this->setFlash('error', 'Seleccione un archivo CSV válido.');
+            $this->redirect('personal/importar');
+        }
+
+        $file = $_FILES['archivo']['tmp_name'];
+        $handle = fopen($file, 'r');
+        if (!$handle) {
+            $this->setFlash('error', 'No se pudo leer el archivo.');
+            $this->redirect('personal/importar');
+        }
+
+        $imported = 0;
+        $errors   = 0;
+        $row      = 0;
+
+        // Skip header row
+        $header = fgetcsv($handle);
+        if (!$header) {
+            fclose($handle);
+            $this->setFlash('error', 'El archivo CSV está vacío o es inválido.');
+            $this->redirect('personal/importar');
+        }
+
+        while (($line = fgetcsv($handle)) !== false) {
+            $row++;
+            if (count($line) < 2) {
+                $errors++;
+                continue;
+            }
+            $nombre = htmlspecialchars(trim($line[0] ?? ''), ENT_QUOTES, 'UTF-8');
+            if (empty($nombre)) {
+                $errors++;
+                continue;
+            }
+            $data = [
+                'nombre'          => $nombre,
+                'apellidos'       => htmlspecialchars(trim($line[1] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'cargo'           => htmlspecialchars(trim($line[2] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'email'           => !empty(trim($line[3] ?? '')) ? htmlspecialchars(trim($line[3]), ENT_QUOTES, 'UTF-8') : null,
+                'telefono'        => !empty(trim($line[4] ?? '')) ? htmlspecialchars(trim($line[4]), ENT_QUOTES, 'UTF-8') : null,
+                'numero_empleado' => !empty(trim($line[5] ?? '')) ? htmlspecialchars(trim($line[5]), ENT_QUOTES, 'UTF-8') : null,
+                'activo'          => 1,
+                'created_at'      => date('Y-m-d H:i:s'),
+            ];
+            try {
+                $this->personalModel->insert($data);
+                $imported++;
+            } catch (\Throwable $e) {
+                $errors++;
+            }
+        }
+
+        fclose($handle);
+
+        if ($imported > 0) {
+            $this->setFlash('success', "Importación completada: {$imported} registro(s) importado(s)" . ($errors > 0 ? ", {$errors} error(es) omitido(s)." : '.'));
+        } else {
+            $this->setFlash('error', "No se importó ningún registro. Verifique el formato del archivo CSV.");
+        }
+
+        $this->redirect('personal');
+    }
+
     public function delete(): void
     {
         $this->requireRole(['superadmin', 'admin']);

@@ -82,6 +82,95 @@ class AlertasController extends BaseController
         $this->redirect('alertas');
     }
 
+    public function edit(): void
+    {
+        $this->requireRole(['superadmin', 'admin']);
+
+        $id = (int) ($_GET['id'] ?? 0);
+        if (!$id) {
+            $this->redirect('alertas');
+        }
+
+        $regla    = null;
+        $assets   = [];
+        $geozonas = [];
+
+        try {
+            $db       = Database::getInstance();
+            $stmt     = $db->prepare("SELECT * FROM alertas_reglas WHERE id = :id");
+            $stmt->execute([':id' => $id]);
+            $regla    = $stmt->fetch();
+            $assets   = $db->query("SELECT id, codigo, nombre FROM activos WHERE estado = 'activo' ORDER BY nombre ASC")->fetchAll();
+            $geozonas = $db->query("SELECT id, nombre FROM geozonas WHERE activo = 1 ORDER BY nombre ASC")->fetchAll();
+        } catch (\Throwable $e) {
+            // tables may not exist
+        }
+
+        if (!$regla) {
+            $this->setFlash('error', 'Regla no encontrada.');
+            $this->redirect('alertas');
+        }
+
+        $this->render('alertas/edit', [
+            'title'    => 'Editar Regla',
+            'flash'    => $this->getFlash(),
+            'regla'    => $regla,
+            'assets'   => $assets,
+            'geozonas' => $geozonas,
+            'csrf'     => $this->csrfToken(),
+        ]);
+    }
+
+    public function updateRule(): void
+    {
+        $this->requireRole(['superadmin', 'admin']);
+
+        if (!$this->isPost() || !$this->validateCsrf()) {
+            $this->setFlash('error', 'Petición inválida.');
+            $this->redirect('alertas');
+        }
+
+        $id     = (int) ($_POST['id'] ?? 0);
+        $nombre = htmlspecialchars(trim($_POST['nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
+
+        if (!$id || empty($nombre)) {
+            $this->setFlash('error', 'Datos inválidos.');
+            $this->redirect('alertas');
+        }
+
+        $allowedTipos = [
+            'geofenceExit', 'geofenceEnter', 'speeding', 'deviceOffline',
+            'deviceOnline', 'ignitionOn', 'ignitionOff', 'alarm', 'custom',
+        ];
+        $tipo = $_POST['tipo'] ?? 'geofenceExit';
+        if (!in_array($tipo, $allowedTipos)) {
+            $tipo = 'geofenceExit';
+        }
+
+        try {
+            $db = Database::getInstance();
+            $db->prepare(
+                "UPDATE alertas_reglas
+                 SET nombre=:n, tipo=:t, activo_id=:a, geozona_id=:g,
+                     notificar_email=:em, notificar_whatsapp=:wa
+                 WHERE id=:id"
+            )->execute([
+                ':n'  => $nombre,
+                ':t'  => $tipo,
+                ':a'  => !empty($_POST['activo_id'])  ? (int)$_POST['activo_id']  : null,
+                ':g'  => !empty($_POST['geozona_id']) ? (int)$_POST['geozona_id'] : null,
+                ':em' => isset($_POST['notificar_email'])    ? 1 : 0,
+                ':wa' => isset($_POST['notificar_whatsapp']) ? 1 : 0,
+                ':id' => $id,
+            ]);
+            $this->setFlash('success', 'Regla actualizada correctamente.');
+        } catch (\Throwable $e) {
+            $this->setFlash('error', 'No se pudo actualizar la regla.');
+        }
+
+        $this->redirect('alertas');
+    }
+
     public function delete(): void
     {
         $this->requireRole(['superadmin', 'admin']);

@@ -5,10 +5,16 @@
             <p class="text-sm text-gray-500 mt-0.5"><?= count($personal) ?> registro(s) activo(s)</p>
         </div>
         <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
-        <a href="<?= BASE_URL ?>/personal/crear"
-           class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-            <i class="fa-solid fa-plus"></i> Agregar Personal
-        </a>
+        <div class="flex gap-2">
+            <a href="<?= BASE_URL ?>/personal/crear"
+               class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+                <i class="fa-solid fa-plus"></i> Agregar Personal
+            </a>
+            <a href="<?= BASE_URL ?>/personal/importar"
+               class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                <i class="fa-solid fa-file-csv"></i> Importación de Contactos
+            </a>
+        </div>
         <?php endif; ?>
     </div>
 

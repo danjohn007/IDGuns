@@ -188,7 +188,11 @@
                             </a>
                         </td>
                         <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
-                        <td class="px-4 py-3 text-right">
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <a href="<?= BASE_URL ?>/alertas/editar/<?= $r['id'] ?>"
+                               class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors mr-1">
+                                <i class="fa-solid fa-pen"></i> Editar
+                            </a>
                             <a href="<?= BASE_URL ?>/alertas/eliminar/<?= $r['id'] ?>"
                                onclick="return confirm('¿Eliminar esta regla de alerta?')"
                                class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">

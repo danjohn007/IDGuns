@@ -19,6 +19,22 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
     <style>
+      /* Dynamic appearance colors from DB */
+      :root {
+        --color-primary: <?php
+          try {
+              $__db = Database::getInstance();
+              $__cp = $__db->query("SELECT valor FROM configuraciones WHERE clave='color_primario' LIMIT 1")->fetch();
+              $__cs = $__db->query("SELECT valor FROM configuraciones WHERE clave='color_secundario' LIMIT 1")->fetch();
+              echo htmlspecialchars(($__cp && !empty($__cp['valor'])) ? $__cp['valor'] : '#4f46e5', ENT_QUOTES, 'UTF-8');
+          } catch (\Throwable $__e) { echo '#4f46e5'; }
+        ?>;
+        --color-secondary: <?php
+          try {
+              echo htmlspecialchars(($__cs && !empty($__cs['valor'])) ? $__cs['valor'] : '#111827', ENT_QUOTES, 'UTF-8');
+          } catch (\Throwable $__e) { echo '#111827'; }
+        ?>;
+      }
       /* Sidebar link base */
       .sidebar-link {
         display: flex;
@@ -37,7 +53,7 @@
         color: #fff;
       }
       .sidebar-link.active {
-        background: linear-gradient(90deg, #4f46e5, #6366f1);
+        background: linear-gradient(90deg, var(--color-primary), #6366f1);
         color: #fff;
         box-shadow: 0 2px 8px rgba(79,70,229,0.4);
       }
@@ -74,7 +90,8 @@
 
 <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
 <aside id="sidebar"
-       class="fixed md:static inset-y-0 left-0 z-30 w-64 bg-gray-900 flex flex-col flex-shrink-0 h-full md:h-screen -translate-x-full md:translate-x-0 shadow-xl">
+       class="fixed md:static inset-y-0 left-0 z-30 w-64 flex flex-col flex-shrink-0 h-full md:h-screen -translate-x-full md:translate-x-0 shadow-xl"
+       style="background-color: var(--color-secondary, #111827);">
 
     <!-- Logo -->
     <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
@@ -136,11 +153,14 @@
     <!-- User profile -->
     <div class="px-4 py-4 border-t border-white/10 bg-black/20">
         <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow">
+            <a href="<?= BASE_URL ?>/perfil" title="Mi Perfil"
+               class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow hover:opacity-80 transition-opacity">
                 <?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?>
-            </div>
+            </a>
             <div class="flex-1 min-w-0">
-                <p class="text-sm text-white font-medium truncate"><?= htmlspecialchars($_SESSION['user_name'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
+                <a href="<?= BASE_URL ?>/perfil" class="text-sm text-white font-medium truncate hover:text-indigo-300 transition-colors block">
+                    <?= htmlspecialchars($_SESSION['user_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                </a>
                 <p class="text-xs text-indigo-300 capitalize"><?= htmlspecialchars($_SESSION['user_role'] ?? '', ENT_QUOTES, 'UTF-8') ?></p>
             </div>
             <a href="<?= BASE_URL ?>/logout" title="Cerrar sesión"
@@ -168,6 +188,24 @@
         </div>
         <div class="flex items-center gap-4 text-sm text-gray-500">
             <span class="hidden sm:inline"><i class="fa-regular fa-clock mr-1"></i><?= date('d/m/Y H:i') ?></span>
+            <!-- Notification Bell -->
+            <?php
+            $__notifCount = 0;
+            try {
+                $__ndb   = Database::getInstance();
+                $__nStmt = $__ndb->prepare("SELECT COUNT(*) FROM notificaciones WHERE user_id = :uid AND leido = 0");
+                $__nStmt->execute([':uid' => $_SESSION['user_id'] ?? 0]);
+                $__notifCount = (int) $__nStmt->fetchColumn();
+            } catch (\Throwable $__ne) { /* table may not exist */ }
+            ?>
+            <a href="<?= BASE_URL ?>/notificaciones" class="relative text-gray-500 hover:text-indigo-600 transition-colors" title="Notificaciones">
+                <i class="fa-solid fa-bell text-lg"></i>
+                <?php if ($__notifCount > 0): ?>
+                <span class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    <?= min($__notifCount, 9) ?>
+                </span>
+                <?php endif; ?>
+            </a>
             <a href="<?= BASE_URL ?>/logout"
                class="flex items-center gap-1 text-red-500 hover:text-red-700 font-medium">
                <i class="fa-solid fa-right-from-bracket"></i> <span class="hidden sm:inline">Salir</span>

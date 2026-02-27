@@ -16,12 +16,20 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
                     <select name="categoria"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="limpieza">Limpieza</option>
-                        <option value="papeleria">Papelería</option>
-                        <option value="uniforme">Uniformes</option>
-                        <option value="municion">Munición</option>
-                        <option value="herramienta">Herramienta</option>
-                        <option value="otro">Otro</option>
+                        <?php if (!empty($catSuministros)): ?>
+                            <?php foreach ($catSuministros as $cat): ?>
+                            <option value="<?= htmlspecialchars($cat['clave'], ENT_QUOTES, 'UTF-8') ?>">
+                                <?= htmlspecialchars($cat['etiqueta'], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <option value="limpieza">Limpieza</option>
+                            <option value="papeleria">Papelería</option>
+                            <option value="uniforme">Uniformes</option>
+                            <option value="municion">Munición</option>
+                            <option value="herramienta">Herramienta</option>
+                            <option value="otro">Otro</option>
+                        <?php endif; ?>
                     </select>
                 </div>
                 <div>

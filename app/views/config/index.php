@@ -579,7 +579,12 @@ $s = $settings ?? [];
                             <td class="px-4 py-2 font-medium text-gray-800"><?= htmlspecialchars($item['etiqueta'], ENT_QUOTES,'UTF-8') ?></td>
                             <td class="px-4 py-2 font-mono text-xs text-gray-600"><?= htmlspecialchars($item['clave'], ENT_QUOTES,'UTF-8') ?></td>
                             <td class="px-4 py-2 text-gray-500"><?= (int)$item['orden'] ?></td>
-                            <td class="px-4 py-2 text-right">
+                            <td class="px-4 py-2 text-right whitespace-nowrap">
+                                <button type="button"
+                                        onclick="openCatalogEdit(<?= (int)$item['id'] ?>, '<?= addslashes($tipo) ?>', '<?= addslashes($item['etiqueta']) ?>', '<?= addslashes($item['clave']) ?>', <?= (int)$item['orden'] ?>)"
+                                        class="text-indigo-500 hover:text-indigo-700 text-xs mr-2" title="Editar">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
                                 <a href="<?= BASE_URL ?>/configuracion/catalogo/eliminar/<?= (int)$item['id'] ?>"
                                    onclick="return confirm('¿Eliminar esta entrada del catálogo?')"
                                    class="text-red-500 hover:text-red-700 text-xs">
@@ -599,3 +604,58 @@ $s = $settings ?? [];
 
     </div><!-- end content -->
 </div>
+
+<!-- Catalog Edit Modal -->
+<div id="catalog-edit-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <h3 class="font-semibold text-gray-700 mb-4 text-sm">
+            <i class="fa-solid fa-pen mr-1 text-indigo-500"></i> Editar Entrada del Catálogo
+        </h3>
+        <form method="POST" action="<?= BASE_URL ?>/configuracion/catalogo/guardar">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES,'UTF-8') ?>">
+            <input type="hidden" name="id" id="cat-edit-id">
+            <input type="hidden" name="catalog_tipo" id="cat-edit-tipo">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Etiqueta *</label>
+                    <input type="text" name="etiqueta" id="cat-edit-etiqueta" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Clave *</label>
+                    <input type="text" name="clave" id="cat-edit-clave" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Orden</label>
+                    <input type="number" name="orden" id="cat-edit-orden" min="0"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            <div class="flex gap-2 mt-4">
+                <button type="submit"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i>Guardar
+                </button>
+                <button type="button" onclick="closeCatalogEdit()"
+                        class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCatalogEdit(id, tipo, etiqueta, clave, orden) {
+    document.getElementById('cat-edit-id').value       = id;
+    document.getElementById('cat-edit-tipo').value     = tipo;
+    document.getElementById('cat-edit-etiqueta').value = etiqueta;
+    document.getElementById('cat-edit-clave').value    = clave;
+    document.getElementById('cat-edit-orden').value    = orden;
+    document.getElementById('catalog-edit-modal').classList.remove('hidden');
+}
+function closeCatalogEdit() {
+    document.getElementById('catalog-edit-modal').classList.add('hidden');
+}
+</script>
