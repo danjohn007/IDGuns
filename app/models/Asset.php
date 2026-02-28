@@ -97,8 +97,35 @@ class Asset extends BaseModel
             'bien_mueble'    => 'BIM',
             default          => 'ACT',
         };
-        $count = $this->count(['categoria' => $categoria]);
-        return $prefix . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+
+        // Find the highest numeric suffix already used for this prefix so that
+        // different categories that share the same prefix (e.g. 'movil' → 'ACT')
+        // never produce a duplicate codigo.
+        $stmt = $this->db->prepare(
+            "SELECT CAST(SUBSTRING(codigo, :offset) AS UNSIGNED) AS num
+             FROM activos WHERE codigo LIKE :pattern
+             ORDER BY num DESC LIMIT 1"
+        );
+        $stmt->execute([
+            ':offset'  => strlen($prefix) + 2,  // skip "PREFIX-"
+            ':pattern' => $prefix . '-%',
+        ]);
+        $row  = $stmt->fetch();
+        $next = ($row ? (int) $row['num'] : 0) + 1;
+
+        // Advance until we find a code that is not already taken (handles gaps).
+        do {
+            $candidate = $prefix . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+            $taken     = $this->queryOne(
+                "SELECT id FROM activos WHERE codigo = :c",
+                [':c' => $candidate]
+            );
+            if ($taken) {
+                $next++;
+            }
+        } while ($taken);
+
+        return $candidate;
     }
 
     public function getCategoryLabel(string $cat): string

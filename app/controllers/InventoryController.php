@@ -92,7 +92,16 @@ class InventoryController extends BaseController
             $this->redirect('inventario/crear');
         }
 
-        $activoId = $this->assetModel->insert($data);
+        try {
+            $activoId = $this->assetModel->insert($data);
+        } catch (\PDOException $e) {
+            if (($e->errorInfo[1] ?? 0) === 1062) {
+                $this->setFlash('error', 'El código generado ya existe. Por favor intente de nuevo.');
+            } else {
+                $this->setFlash('error', 'No se pudo registrar el activo. Verifique los datos e intente de nuevo.');
+            }
+            $this->redirect('inventario/crear');
+        }
 
         // Set personal_id separately (column may not exist until migration v3 is run)
         if (!empty($_POST['personal_id'])) {
