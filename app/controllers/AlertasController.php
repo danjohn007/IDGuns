@@ -9,6 +9,8 @@ class AlertasController extends BaseController
         $assets  = [];
         $geozonas = [];
 
+        $this->syncGeozonas();
+
         try {
             $db      = Database::getInstance();
             $reglas  = $db->query(
@@ -94,6 +96,8 @@ class AlertasController extends BaseController
         $regla    = null;
         $assets   = [];
         $geozonas = [];
+
+        $this->syncGeozonas();
 
         try {
             $db       = Database::getInstance();
@@ -205,5 +209,58 @@ class AlertasController extends BaseController
             }
         }
         $this->redirect('alertas');
+    }
+
+    /**
+     * Fetch geofences from Traccar and upsert them into the local geozonas table.
+     * This ensures the Alertas dropdown always shows all geozonas from Traccar,
+     * including those created outside the IDGuns UI.
+     */
+    private function syncGeozonas(): void
+    {
+        try {
+            $db       = Database::getInstance();
+            $settings = (new Setting())->getAllGrouped();
+            $url      = rtrim($settings['traccar_url']     ?? '', '/');
+            $user     = $settings['traccar_usuario']        ?? '';
+            $pass     = $settings['traccar_password']       ?? '';
+
+            if (empty($url)) return;
+
+            $ch = curl_init($url . '/api/geofences');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 5,
+                CURLOPT_USERPWD        => $user . ':' . $pass,
+                CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+            $response = curl_exec($ch);
+            $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($code !== 200) return;
+
+            $geofences = json_decode($response, true);
+            if (!is_array($geofences)) return;
+
+            foreach ($geofences as $g) {
+                if (empty($g['id'])) continue;
+                $db->prepare(
+                    "INSERT INTO geozonas (traccar_id, nombre, descripcion, area, activo, created_at)
+                     VALUES (:tid, :nombre, :desc, :area, 1, :cr)
+                     ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), activo = 1"
+                )->execute([
+                    ':tid'    => (int) $g['id'],
+                    ':nombre' => $g['name'],
+                    ':desc'   => $g['description'] ?? '',
+                    ':area'   => $g['area'] ?? '',
+                    ':cr'     => date('Y-m-d H:i:s'),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // ignore sync errors silently
+        }
     }
 }

@@ -35,12 +35,43 @@ class GeozonaController extends BaseController
     /**
      * Proxy: GET /geozonas/listar
      * Returns geofences list from Traccar API as JSON.
+     * Also syncs the result to the local geozonas table so that
+     * other modules (e.g. Alertas) can query geozones from the DB.
      */
     public function list(): void
     {
         $this->requireAuth();
         $data = $this->traccarGet('/api/geofences');
+        if (is_array($data) && !isset($data['error'])) {
+            $this->syncGeozonas($data);
+        }
         $this->json(is_array($data) ? $data : []);
+    }
+
+    /**
+     * Upsert a list of Traccar geofences into the local geozonas table.
+     */
+    private function syncGeozonas(array $geofences): void
+    {
+        try {
+            $db = Database::getInstance();
+            foreach ($geofences as $g) {
+                if (empty($g['id'])) continue;
+                $db->prepare(
+                    "INSERT INTO geozonas (traccar_id, nombre, descripcion, area, activo, created_at)
+                     VALUES (:tid, :nombre, :desc, :area, 1, :cr)
+                     ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), activo = 1"
+                )->execute([
+                    ':tid'    => (int) $g['id'],
+                    ':nombre' => $g['name'],
+                    ':desc'   => $g['description'] ?? '',
+                    ':area'   => $g['area'] ?? '',
+                    ':cr'     => date('Y-m-d H:i:s'),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // ignore sync errors — geozonas table may not exist yet
+        }
     }
 
     /**
