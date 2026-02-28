@@ -29,17 +29,19 @@ class InventoryController extends BaseController
         $offset = ($page - 1) * $perPage;
         $activos= $this->assetModel->getWithResponsable($perPage, $offset, $filters);
 
-        $users  = (new User())->getAllActive();
+        $users      = (new User())->getAllActive();
+        $catActivos = $this->getCatalog('activos_categoria');
 
         $this->render('inventory/index', [
-            'title'    => 'Inventario',
-            'flash'    => $this->getFlash(),
-            'activos'  => $activos,
-            'filters'  => $filters,
-            'page'     => $page,
-            'pages'    => $pages,
-            'total'    => $total,
-            'users'    => $users,
+            'title'      => 'Inventario',
+            'flash'      => $this->getFlash(),
+            'activos'    => $activos,
+            'filters'    => $filters,
+            'page'       => $page,
+            'pages'      => $pages,
+            'total'      => $total,
+            'users'      => $users,
+            'catActivos' => $catActivos,
         ]);
     }
 
@@ -47,17 +49,19 @@ class InventoryController extends BaseController
     {
         $this->requireRole(['superadmin', 'admin']);
 
-        $personal  = $this->getPersonal();
-        $oficiales = $this->getOficiales();
-        $catActivos = $this->getCatalog('activos_categoria');
+        $personal    = $this->getPersonal();
+        $oficiales   = $this->getOficiales();
+        $catActivos  = $this->getCatalog('activos_categoria');
+        $catVehiculos = $this->getCatalog('vehiculos_tipo');
 
         $this->render('inventory/create', [
-            'title'      => 'Nuevo Activo',
-            'flash'      => $this->getFlash(),
-            'personal'   => $personal,
-            'oficiales'  => $oficiales,
-            'catActivos' => $catActivos,
-            'csrf'       => $this->csrfToken(),
+            'title'       => 'Nuevo Activo',
+            'flash'       => $this->getFlash(),
+            'personal'    => $personal,
+            'oficiales'   => $oficiales,
+            'catActivos'  => $catActivos,
+            'catVehiculos'=> $catVehiculos,
+            'csrf'        => $this->csrfToken(),
         ]);
     }
 
@@ -131,7 +135,7 @@ class InventoryController extends BaseController
         if ($categoria === 'vehiculo' && !empty($_POST['vehiculo_tipo'])) {
             $db = Database::getInstance();
             $stmt = $db->prepare(
-                "INSERT INTO vehiculos (activo_id,tipo,placas,año,color,estado,kilometraje,responsable_id,created_at)
+                "INSERT INTO vehiculos (activo_id,tipo,placas,anio,color,estado,kilometraje,responsable_id,created_at)
                  VALUES (:a,:t,:p,:y,:c,:e,:k,:r,:cr)"
             );
             $stmt->execute([
@@ -192,17 +196,19 @@ class InventoryController extends BaseController
         $personal   = $this->getPersonal();
         $oficiales  = $this->getOficiales();
         $catActivos = $this->getCatalog('activos_categoria');
+        $catVehiculos = $this->getCatalog('vehiculos_tipo');
 
         $this->render('inventory/edit', [
-            'title'      => 'Editar Activo',
-            'flash'      => $this->getFlash(),
-            'activo'     => $activo,
-            'arma'       => $arma,
-            'gpsDevice'  => $gpsDevice,
-            'personal'   => $personal,
-            'oficiales'  => $oficiales,
-            'catActivos' => $catActivos,
-            'csrf'       => $this->csrfToken(),
+            'title'        => 'Editar Activo',
+            'flash'        => $this->getFlash(),
+            'activo'       => $activo,
+            'arma'         => $arma,
+            'gpsDevice'    => $gpsDevice,
+            'personal'     => $personal,
+            'oficiales'    => $oficiales,
+            'catActivos'   => $catActivos,
+            'catVehiculos' => $catVehiculos,
+            'csrf'         => $this->csrfToken(),
         ]);
     }
 

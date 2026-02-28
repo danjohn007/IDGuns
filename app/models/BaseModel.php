@@ -45,10 +45,13 @@ class BaseModel
     /** Insert a row and return new id */
     public function insert(array $data): int
     {
-        $cols  = implode(', ', array_keys($data));
-        $phs   = implode(', ', array_map(fn($k) => ":$k", array_keys($data)));
-        $stmt  = $this->db->prepare("INSERT INTO {$this->table} ({$cols}) VALUES ({$phs})");
-        foreach ($data as $k => $v) $stmt->bindValue(":$k", $v);
+        $cols     = implode(', ', array_keys($data));
+        $safeKeys = array_map(fn($k) => preg_replace('/[^a-zA-Z0-9_]/', '_', $k), array_keys($data));
+        $phs      = implode(', ', array_map(fn($k) => ":{$k}", $safeKeys));
+        $stmt     = $this->db->prepare("INSERT INTO {$this->table} ({$cols}) VALUES ({$phs})");
+        foreach (array_combine($safeKeys, array_values($data)) as $k => $v) {
+            $stmt->bindValue(":{$k}", $v);
+        }
         $stmt->execute();
         return (int) $this->db->lastInsertId();
     }
@@ -56,9 +59,17 @@ class BaseModel
     /** Update a row by id */
     public function update(int $id, array $data): bool
     {
-        $sets = implode(', ', array_map(fn($k) => "{$k} = :{$k}", array_keys($data)));
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET {$sets} WHERE id = :id");
-        foreach ($data as $k => $v) $stmt->bindValue(":$k", $v);
+        $sets = [];
+        $safe = [];
+        foreach (array_keys($data) as $k) {
+            $sk     = preg_replace('/[^a-zA-Z0-9_]/', '_', $k);
+            $sets[] = "{$k} = :{$sk}";
+            $safe[$sk] = $k;
+        }
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = :id");
+        foreach ($safe as $sk => $orig) {
+            $stmt->bindValue(":{$sk}", $data[$orig]);
+        }
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         return $stmt->execute();
     }

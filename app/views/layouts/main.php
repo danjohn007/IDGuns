@@ -137,6 +137,7 @@
         <?= navLink('personal',         'fa-id-badge',      'Personal',         $currentUri, 'personal') ?>
         <?= navLink('bitacora',         'fa-book-open',     'Bitácora',         $currentUri, 'bitacora') ?>
         <?= navLink('geolocalizacion',  'fa-map-location-dot', 'Geolocalización', $currentUri, 'geolocalizacion') ?>
+        <?= navLink('reportes-gps',     'fa-chart-simple',    'Reportes GPS',    $currentUri, 'reportes-gps') ?>
         <?= navLink('geozonas',         'fa-draw-polygon',  'Geozonas',         $currentUri, 'geozonas') ?>
         <?= navLink('alertas',          'fa-bell',          'Alertas',          $currentUri, 'alertas') ?>
         <?= navLink('analytics',        'fa-chart-line',    'Análisis de Datos', $currentUri, 'analytics') ?>
