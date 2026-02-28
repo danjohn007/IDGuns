@@ -52,7 +52,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                    <input type="text" name="telefono"
+                    <input type="tel" name="telefono" maxlength="10" pattern="[0-9]{10}"
                            value="<?= htmlspecialchars($persona['telefono'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
                 </div>

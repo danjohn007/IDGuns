@@ -71,7 +71,7 @@ $tipoLabel   = ['patrulla'=>'Patrulla','moto'=>'Moto','camioneta'=>'Camioneta','
     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600 mb-4">
         <div><span class="text-gray-400">Placas:</span> <strong><?= htmlspecialchars($v['placas']??'—', ENT_QUOTES,'UTF-8') ?></strong></div>
         <div><span class="text-gray-400">Tipo:</span> <?= $tipoLabel[$v['tipo']]??$v['tipo'] ?></div>
-        <div><span class="text-gray-400">Año:</span> <?= htmlspecialchars($v['año']??'—', ENT_QUOTES,'UTF-8') ?></div>
+        <div><span class="text-gray-400">Año:</span> <?= htmlspecialchars($v['anio'] ?? $v['año'] ?? '—', ENT_QUOTES,'UTF-8') ?></div>
         <div><span class="text-gray-400">Color:</span> <?= htmlspecialchars($v['color']??'—', ENT_QUOTES,'UTF-8') ?></div>
         <div><span class="text-gray-400">Km:</span> <?= number_format($v['kilometraje']??0) ?></div>
         <div><span class="text-gray-400">Responsable:</span> <?= htmlspecialchars($v['responsable_nombre']??'—', ENT_QUOTES,'UTF-8') ?></div>

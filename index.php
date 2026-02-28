@@ -78,6 +78,8 @@ $routes = [
     'geolocalizacion/ruta'          => ['GeoController', 'route'],
     'geolocalizacion/dispositivos'  => ['GeoController', 'apiDevices'],
 
+    'reportes-gps'                  => ['GpsReportController', 'index'],
+
     'geozonas'                      => ['GeozonaController',  'index'],
     'geozonas/listar'               => ['GeozonaController',  'list'],
     'geozonas/guardar'              => ['GeozonaController',  'store'],

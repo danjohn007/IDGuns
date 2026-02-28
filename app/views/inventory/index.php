@@ -1,5 +1,11 @@
 <?php
-$catLabel  = ['arma'=>'Arma','vehiculo'=>'Vehículo','equipo_computo'=>'Eq. Cómputo','equipo_oficina'=>'Eq. Oficina','bien_mueble'=>'Bien Mueble'];
+$defaultCatLabel = ['arma'=>'Arma','vehiculo'=>'Vehículo','equipo_computo'=>'Eq. Cómputo','equipo_oficina'=>'Eq. Oficina','bien_mueble'=>'Bien Mueble'];
+// Merge static defaults with any dynamic catalog categories
+$catMap = $defaultCatLabel;
+if (!empty($catActivos)) {
+    $catMap = [];
+    foreach ($catActivos as $cat) { $catMap[$cat['clave']] = $cat['etiqueta']; }
+}
 $statColor = ['activo'=>'green','baja'=>'red','mantenimiento'=>'yellow'];
 ?>
 <!-- Toolbar -->
@@ -9,8 +15,8 @@ $statColor = ['activo'=>'green','baja'=>'red','mantenimiento'=>'yellow'];
                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 w-44">
         <select name="categoria" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
             <option value="">Todas las categorías</option>
-            <?php foreach ($catLabel as $k=>$v): ?>
-            <option value="<?= $k ?>" <?= ($filters['categoria']==$k)?'selected':'' ?>><?= $v ?></option>
+            <?php foreach ($catMap as $k=>$v): ?>
+            <option value="<?= htmlspecialchars($k, ENT_QUOTES,'UTF-8') ?>" <?= ($filters['categoria']==$k)?'selected':'' ?>><?= htmlspecialchars($v, ENT_QUOTES,'UTF-8') ?></option>
             <?php endforeach; ?>
         </select>
         <select name="estado" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
@@ -84,7 +90,7 @@ $statColor = ['activo'=>'green','baja'=>'red','mantenimiento'=>'yellow'];
                 <td class="px-4 py-3 font-medium text-gray-800"><?= htmlspecialchars($a['nombre'], ENT_QUOTES,'UTF-8') ?></td>
                 <td class="px-4 py-3">
                     <span class="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium">
-                        <?= $catLabel[$a['categoria']] ?? $a['categoria'] ?>
+                        <?= htmlspecialchars($catMap[$a['categoria']] ?? $a['categoria'], ENT_QUOTES,'UTF-8') ?>
                     </span>
                 </td>
                 <td class="px-4 py-3 text-gray-600"><?= htmlspecialchars(trim(($a['marca']??'').' '.($a['modelo']??'')), ENT_QUOTES,'UTF-8') ?></td>

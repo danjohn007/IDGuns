@@ -130,8 +130,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const markers       = {};   // deviceId → marker
-let   routeLayer    = null;
+const markers        = {};   // deviceId → marker
+let   routeLayers    = {};   // label → layerGroup (supports multiple routes)
 let   activeDeviceId = null;
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -212,6 +212,9 @@ async function loadPositions() {
             if (markers[pos.deviceId]) {
                 markers[pos.deviceId].setLatLng(latlng);
                 markers[pos.deviceId].setIcon(statusIcon(dev.status));
+                // Re-bind click handler with latest data
+                markers[pos.deviceId].off('click');
+                markers[pos.deviceId].on('click', () => openDevicePopup(markers[pos.deviceId], pos, dev, local));
             } else {
                 const m = L.marker(latlng, { icon: statusIcon(dev.status) }).addTo(map);
                 m.on('click', () => openDevicePopup(m, pos, dev, local));
@@ -342,8 +345,7 @@ async function loadTodayRoute(deviceId, deviceName) {
 
 // ── Route Replay (Traccar web) ────────────────────────────────────────────────
 function openReplay(deviceId, deviceName) {
-    map.closePopup();
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
+    map.closePopup();    const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
     const from  = today + 'T00:00:00.000Z';
     const to    = today + 'T23:59:59.000Z';
     const replayUrl = TRACCAR_URL + '/replay?deviceId=' + deviceId
@@ -432,7 +434,8 @@ async function loadHistoryRoute(deviceId, deviceName) {
 
 // ── Draw route on map ─────────────────────────────────────────────────────────
 function drawRoute(positions, deviceName, label) {
-    if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+    // Remove only the layer for this label (allows comparing multiple routes)
+    if (routeLayers[label]) { map.removeLayer(routeLayers[label]); delete routeLayers[label]; }
 
     if (!Array.isArray(positions) || positions.length === 0 || positions.error) {
         showRoutePanel(label, `<span style="color:#64748b">Sin posiciones para este periodo.</span>
@@ -451,33 +454,49 @@ function drawRoute(positions, deviceName, label) {
         return;
     }
 
-    routeLayer = L.layerGroup().addTo(map);
+    // Use a distinct color per route
+    const colors = ['#4f46e5','#059669','#dc2626','#d97706','#7c3aed','#0891b2'];
+    const colorIdx = Object.keys(routeLayers).length % colors.length;
+    const lineColor = colors[colorIdx];
+
+    const layer = L.layerGroup().addTo(map);
 
     // Route line
-    L.polyline(latlngs, { color: '#4f46e5', weight: 4, opacity: 0.8 }).addTo(routeLayer);
+    L.polyline(latlngs, { color: lineColor, weight: 4, opacity: 0.8 }).addTo(layer);
 
     // Start marker (green)
     L.circleMarker(latlngs[0], { radius: 7, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1 })
-     .bindTooltip('Inicio').addTo(routeLayer);
+     .bindTooltip('Inicio').addTo(layer);
 
     // End marker (red)
     L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 1 })
-     .bindTooltip('Fin').addTo(routeLayer);
+     .bindTooltip('Fin').addTo(layer);
+
+    routeLayers[label] = layer;
 
     map.fitBounds(L.polyline(latlngs).getBounds().pad(0.15));
 
     const dist = calcDistance(latlngs).toFixed(2);
+    const routeCount = Object.keys(routeLayers).length;
     const body = `
         <div style="font-size:0.82rem;color:#374151">
-            <div><i class="fa-solid fa-route" style="color:#4f46e5;margin-right:4px"></i>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <span style="display:inline-block;width:12px;height:4px;background:${lineColor};border-radius:2px"></span>
+                <strong>${escHtml(label)}</strong>
+            </div>
+            <div><i class="fa-solid fa-route" style="color:${lineColor};margin-right:4px"></i>
                  <strong>${positions.length}</strong> puntos registrados</div>
             <div style="margin-top:4px"><i class="fa-solid fa-road" style="color:#059669;margin-right:4px"></i>
                  Distancia aproximada: <strong>${dist} km</strong></div>
+            ${routeCount > 1 ? `<div style="margin-top:4px;color:#7c3aed"><i class="fa-solid fa-code-compare mr-1"></i>${routeCount} rutas activas</div>` : ''}
         </div>
-        <div style="margin-top:8px;display:flex;gap:6px">
-            <button class="popup-btn popup-btn-gray" onclick="clearRoute()">
-                <i class="fa-solid fa-eraser"></i> Limpiar ruta
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="popup-btn popup-btn-gray" onclick="clearSingleRoute(${JSON.stringify(label)})">
+                <i class="fa-solid fa-eraser"></i> Limpiar esta ruta
             </button>
+            ${routeCount > 1 ? `<button class="popup-btn" style="background:#fee2e2;color:#991b1b" onclick="clearAllRoutes()">
+                <i class="fa-solid fa-trash"></i> Limpiar todas
+            </button>` : ''}
         </div>`;
     showRoutePanel(label, body);
 }
@@ -494,10 +513,18 @@ function closeRoutePanel() {
     document.getElementById('route-panel').style.display = 'none';
 }
 
-function clearRoute() {
-    if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+function clearSingleRoute(label) {
+    if (routeLayers[label]) { map.removeLayer(routeLayers[label]); delete routeLayers[label]; }
     closeRoutePanel();
 }
+
+function clearAllRoutes() {
+    Object.values(routeLayers).forEach(l => map.removeLayer(l));
+    routeLayers = {};
+    closeRoutePanel();
+}
+
+function clearRoute() { clearAllRoutes(); }
 
 function calcDistance(latlngs) {
     let d = 0;

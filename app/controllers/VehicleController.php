@@ -100,7 +100,7 @@ class VehicleController extends BaseController
             'activo_id'      => $activoId,
             'tipo'           => $_POST['tipo'] ?? 'patrulla',
             'placas'         => htmlspecialchars(trim($_POST['placas'] ?? ''), ENT_QUOTES, 'UTF-8'),
-            'año'            => (int) ($_POST['anio'] ?? date('Y')),
+            'anio'           => (int) ($_POST['anio'] ?? date('Y')),
             'color'          => htmlspecialchars(trim($_POST['color'] ?? ''), ENT_QUOTES, 'UTF-8'),
             'estado'         => $_POST['estado'] ?? 'operativo',
             'kilometraje'    => (int) ($_POST['kilometraje'] ?? 0),
@@ -117,6 +117,27 @@ class VehicleController extends BaseController
                     "UPDATE vehiculos SET personal_id = :pid WHERE id = :id"
                 )->execute([':pid' => (int)$_POST['personal_id'], ':id' => $vehicleId]);
             } catch (\Throwable $e) { /* column not yet available */ }
+        }
+
+        // GPS device
+        if (!empty($_POST['gps_unique_id'])) {
+            try {
+                $gpsModel = new GpsDevice();
+                $gpsData  = [
+                    'nombre'             => htmlspecialchars(trim($_POST['gps_nombre'] ?? $assetData['nombre']), ENT_QUOTES, 'UTF-8'),
+                    'unique_id'          => htmlspecialchars(trim($_POST['gps_unique_id']), ENT_QUOTES, 'UTF-8'),
+                    'traccar_device_id'  => !empty($_POST['gps_traccar_id']) ? (int)$_POST['gps_traccar_id'] : null,
+                    'telefono'           => htmlspecialchars(trim($_POST['gps_telefono'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'modelo_dispositivo' => htmlspecialchars(trim($_POST['gps_modelo'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'categoria_traccar'  => $_POST['gps_categoria'] ?? 'car',
+                    'contacto'           => htmlspecialchars(trim($_POST['gps_contacto'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'grupo_id'           => !empty($_POST['gps_grupo_id']) ? (int)$_POST['gps_grupo_id'] : null,
+                    'activo'             => 1,
+                ];
+                $gpsModel->upsertForActivo($activoId, $gpsData);
+            } catch (\Throwable $e) {
+                // GPS table may not exist yet (migration pending) — skip silently
+            }
         }
 
         $this->setFlash('success', 'Vehículo registrado correctamente.');
@@ -181,7 +202,7 @@ class VehicleController extends BaseController
         $this->vehicleModel->update($id, [
             'tipo'           => $_POST['tipo'] ?? 'patrulla',
             'placas'         => htmlspecialchars(trim($_POST['placas'] ?? ''), ENT_QUOTES, 'UTF-8'),
-            'año'            => (int) ($_POST['anio'] ?? date('Y')),
+            'anio'           => (int) ($_POST['anio'] ?? date('Y')),
             'color'          => htmlspecialchars(trim($_POST['color'] ?? ''), ENT_QUOTES, 'UTF-8'),
             'estado'         => $_POST['estado'] ?? 'operativo',
             'kilometraje'    => (int) ($_POST['kilometraje'] ?? 0),
@@ -263,7 +284,7 @@ class VehicleController extends BaseController
                 $v['nombre'] ?? trim(($v['marca'] ?? '') . ' ' . ($v['modelo'] ?? '')),
                 $v['placas'] ?? '',
                 $v['tipo'],
-                $v['año'] ?? '',
+                $v['anio'] ?? $v['año'] ?? '',
                 $v['color'] ?? '',
                 $v['estado'],
                 $v['kilometraje'] ?? 0,
