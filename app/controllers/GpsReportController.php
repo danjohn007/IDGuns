@@ -22,7 +22,7 @@ class GpsReportController extends BaseController
         $dateFrom = $_GET['fecha_desde'] ?? date('Y-m-01');
         $dateTo   = $_GET['fecha_hasta'] ?? date('Y-m-d');
 
-        // km/L and gas price inputs
+        // km/L and gas price inputs (global / fallback values)
         $kmPorLitro  = !empty($_GET['km_por_litro']) ? (float)$_GET['km_por_litro'] : 0;
         $precioPorLitro = !empty($_GET['precio_litro']) ? (float)$_GET['precio_litro'] : 22.50; // MXN avg
 
@@ -37,7 +37,17 @@ class GpsReportController extends BaseController
         $reports = [];
         if ($traccarUrl && !empty($devices)) {
             foreach ($devices as $device) {
-                if (empty($device['traccar_device_id'])) continue;
+                if (empty($device['traccar_device_id'])) {
+                    // No Traccar ID: include device with null data
+                    $reports[] = [
+                        'device'          => $device,
+                        'summary'         => [],
+                        'km_total'        => null,
+                        'litros_estimados'=> null,
+                        'costo_estimado'  => null,
+                    ];
+                    continue;
+                }
                 $summary = $this->fetchTraccarSummary(
                     (int)$device['traccar_device_id'],
                     $dateFrom,
@@ -45,7 +55,10 @@ class GpsReportController extends BaseController
                     $settings
                 );
                 $kmTotal = isset($summary['distance']) ? round($summary['distance'] / 1000, 2) : null;
-                $litrosEstimados = ($kmPorLitro > 0 && $kmTotal !== null) ? round($kmTotal / $kmPorLitro, 2) : null;
+
+                // Per-device km/L takes priority over the global form value
+                $deviceKmL = !empty($device['km_por_litro']) ? (float)$device['km_por_litro'] : $kmPorLitro;
+                $litrosEstimados = ($deviceKmL > 0 && $kmTotal !== null) ? round($kmTotal / $deviceKmL, 2) : null;
                 $costoEstimado   = ($litrosEstimados !== null) ? round($litrosEstimados * $precioPorLitro, 2) : null;
                 $reports[] = [
                     'device'          => $device,
@@ -80,6 +93,39 @@ class GpsReportController extends BaseController
             'kmPorLitro'     => $kmPorLitro,
             'precioPorLitro' => $precioPorLitro,
         ]);
+    }
+
+    /**
+     * POST /reportes-gps/guardar-km
+     * Saves the per-device km/Litro value via AJAX (JSON response).
+     */
+    public function saveKmPorLitro(): void
+    {
+        $this->requireRole(['superadmin', 'admin']);
+
+        header('Content-Type: application/json');
+        if (!$this->isPost()) {
+            echo json_encode(['ok' => false, 'error' => 'Método no permitido']);
+            exit;
+        }
+
+        $id  = (int) ($_POST['device_id'] ?? 0);
+        $kml = isset($_POST['km_por_litro']) && $_POST['km_por_litro'] !== ''
+               ? (float) $_POST['km_por_litro']
+               : null;
+
+        if (!$id) {
+            echo json_encode(['ok' => false, 'error' => 'ID de dispositivo inválido']);
+            exit;
+        }
+
+        try {
+            $this->gpsModel->updateKmPorLitro($id, $kml);
+            echo json_encode(['ok' => true]);
+        } catch (\Throwable $e) {
+            echo json_encode(['ok' => false, 'error' => 'Error al guardar: ' . $e->getMessage()]);
+        }
+        exit;
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────

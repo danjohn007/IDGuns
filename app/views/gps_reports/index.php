@@ -172,15 +172,34 @@ $today = date('Y-m-d');
                     <?= $cos !== null ? '$' . number_format($cos, 2) : '<span class="text-gray-300">—</span>' ?>
                 </td>
                 <td class="px-4 py-3 text-center">
-                    <?php if ($traccarUrl && !empty($d['traccar_device_id'])): ?>
-                    <a href="<?= BASE_URL ?>/geolocalizacion"
-                       title="Ver en mapa"
-                       class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1 rounded hover:bg-indigo-50 transition-colors">
-                        <i class="fa-solid fa-map-location-dot"></i> Mapa
-                    </a>
-                    <?php else: ?>
-                    <span class="text-xs text-gray-300">Sin ID Traccar</span>
-                    <?php endif; ?>
+                    <div class="flex flex-col gap-1.5 items-center">
+                        <?php if ($traccarUrl && !empty($d['traccar_device_id'])): ?>
+                        <a href="<?= BASE_URL ?>/geolocalizacion"
+                           title="Ver en mapa"
+                           class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1 rounded hover:bg-indigo-50 transition-colors">
+                            <i class="fa-solid fa-map-location-dot"></i> Mapa
+                        </a>
+                        <?php else: ?>
+                        <span class="text-xs text-gray-300">Sin ID Traccar</span>
+                        <?php endif; ?>
+                        <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
+                        <div class="flex items-center gap-1 mt-0.5"
+                             title="km / Litro individual (sobreescribe el valor global)">
+                            <input type="number" min="0" step="0.1"
+                                   value="<?= htmlspecialchars($d['km_por_litro'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="km/L"
+                                   data-device-id="<?= (int)$d['id'] ?>"
+                                   class="kml-input border border-gray-200 rounded px-1.5 py-0.5 text-xs w-16 focus:ring-orange-400 focus:border-orange-400"
+                                   aria-label="km/Litro individual">
+                            <button type="button"
+                                    onclick="saveKml(this)"
+                                    class="text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 px-1.5 py-0.5 rounded transition-colors"
+                                    title="Guardar km/L">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                            </button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -198,3 +217,32 @@ $today = date('Y-m-d');
     <?php endif; ?>
     <?php endif; ?>
 </div>
+
+<script>
+async function saveKml(btn) {
+    const wrap     = btn.closest('div');
+    const input    = wrap.querySelector('.kml-input');
+    const deviceId = input ? input.dataset.deviceId : null;
+    if (!deviceId) return;
+
+    const formData = new FormData();
+    formData.append('device_id',   deviceId);
+    formData.append('km_por_litro', input.value);
+
+    btn.disabled = true;
+    try {
+        const res  = await fetch('<?= BASE_URL ?>/reportes-gps/guardar-km', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.ok) {
+            input.classList.add('border-green-400');
+            setTimeout(() => input.classList.remove('border-green-400'), 1500);
+        } else {
+            alert('Error: ' + (data.error || 'No se pudo guardar'));
+        }
+    } catch (e) {
+        alert('Error de conexión al guardar km/L: ' + e.message);
+    } finally {
+        btn.disabled = false;
+    }
+}
+</script>

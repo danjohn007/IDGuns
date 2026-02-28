@@ -252,7 +252,7 @@ function placeLocalFallbackMarkers() {
 }
 
 // ── Popup for Traccar device ──────────────────────────────────────────────────
-function openDevicePopup(marker, pos, dev, local) {
+async function openDevicePopup(marker, pos, dev, local) {
     activeDeviceId = pos.deviceId;
     const speed   = pos.speed ? (pos.speed * 1.852).toFixed(1) + ' km/h' : '0.0 km/h';
     const updated = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleString('es-MX', { timeZone: TZ }) : '—';
@@ -274,6 +274,8 @@ function openDevicePopup(marker, pos, dev, local) {
             <tr><td>Coordenadas</td><td>${pos.latitude.toFixed(5)}°, ${pos.longitude.toFixed(5)}°</td></tr>
             ${pos.altitude ? `<tr><td>Altitud</td><td>${pos.altitude.toFixed(0)} m</td></tr>` : ''}
             ${dev.model ? `<tr><td>Modelo</td><td>${escHtml(dev.model)}</td></tr>` : ''}
+            <tr id="row-km-${pos.deviceId}"><td>Km del mes</td><td><span class="spinner" style="width:12px;height:12px;border-width:2px"></span></td></tr>
+            <tr id="row-costo-${pos.deviceId}"><td>Costo est.</td><td><span style="color:#9ca3af">—</span></td></tr>
         </table>
         <div class="popup-actions">
             <button class="popup-btn popup-btn-blue" onclick="loadTodayRoute(${pos.deviceId}, '${escHtml(name)}')">
@@ -291,6 +293,52 @@ function openDevicePopup(marker, pos, dev, local) {
         </div>`;
 
     marker.bindPopup(html, { maxWidth: 320 }).openPopup();
+
+    // Asynchronously load current-month summary
+    loadMonthSummary(pos.deviceId, local);
+}
+
+// ── Load current-month km summary for popup ───────────────────────────────────
+async function loadMonthSummary(traccarDeviceId, local) {
+    const kmRow    = document.getElementById('row-km-'    + traccarDeviceId);
+    const costoRow = document.getElementById('row-costo-' + traccarDeviceId);
+    if (!kmRow) return;
+
+    const now      = new Date();
+    const tzDate   = new Date(now.toLocaleString('en-US', { timeZone: TZ }));
+    const year     = tzDate.getFullYear();
+    const month    = String(tzDate.getMonth() + 1).padStart(2, '0');
+    const day      = String(tzDate.getDate()).padStart(2, '0');
+    const from     = `${year}-${month}-01T00:00:00Z`;
+    const to       = `${year}-${month}-${day}T23:59:59Z`;
+
+    try {
+        const res  = await fetch(`${BASE_URL}/geolocalizacion/resumen?deviceId=${traccarDeviceId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const data = await res.json();
+
+        // data may be an array (Traccar returns array) or an object if it's the first element
+        const summary = Array.isArray(data) ? (data[0] || {}) : (data || {});
+        const km      = summary.distance !== undefined ? (summary.distance / 1000).toFixed(2) : null;
+
+        if (kmRow) {
+            kmRow.cells[1].innerHTML = km !== null
+                ? `<strong style="color:#4f46e5">${km} km</strong>`
+                : '<span style="color:#9ca3af">—</span>';
+        }
+
+        if (costoRow && km !== null) {
+            const kml = local && local.km_por_litro ? parseFloat(local.km_por_litro) : 0;
+            if (kml > 0) {
+                const litros = parseFloat(km) / kml;
+                const costo  = (litros * 22.5).toFixed(2); // default MXN avg price
+                costoRow.cells[1].innerHTML = `<strong style="color:#059669">$${Number(costo).toLocaleString('es-MX', {minimumFractionDigits:2})} MXN</strong>`;
+            } else {
+                costoRow.cells[1].innerHTML = '<span style="color:#9ca3af;font-size:0.75rem">Asigne km/L en Reportes GPS</span>';
+            }
+        }
+    } catch (e) {
+        if (kmRow) kmRow.cells[1].innerHTML = '<span style="color:#9ca3af">—</span>';
+    }
 }
 
 // Popup for local device without Traccar position
