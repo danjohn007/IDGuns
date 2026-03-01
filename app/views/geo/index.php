@@ -486,7 +486,7 @@ function drawRoute(positions, deviceName, label) {
     if (routeLayers[label]) { map.removeLayer(routeLayers[label]); delete routeLayers[label]; }
 
     if (!Array.isArray(positions) || positions.length === 0 || positions.error) {
-        showRoutePanel(label, `<span style="color:#64748b">Sin posiciones para este periodo.</span>
+        showRoutePanel(deviceName ? deviceName + ' \u2014 ' + label : label, `<span style="color:#64748b">Sin posiciones para este periodo.</span>
             <div style="margin-top:6px">
                 <button class="popup-btn popup-btn-gray" onclick="closeRoutePanel()">Cerrar</button>
             </div>`);
@@ -498,7 +498,7 @@ function drawRoute(positions, deviceName, label) {
         .map(p => [p.latitude, p.longitude]);
 
     if (latlngs.length === 0) {
-        showRoutePanel(label, '<span style="color:#64748b">Sin posiciones válidas.</span>');
+        showRoutePanel(deviceName ? deviceName + ' \u2014 ' + label : label, '<span style="color:#64748b">Sin posiciones válidas.</span>');
         return;
     }
 
@@ -526,6 +526,7 @@ function drawRoute(positions, deviceName, label) {
 
     const dist = calcDistance(latlngs).toFixed(2);
     const routeCount = Object.keys(routeLayers).length;
+    const safeLabel = JSON.stringify(label).replace(/"/g, '&quot;');
     const body = `
         <div style="font-size:0.82rem;color:#374151">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
@@ -539,14 +540,14 @@ function drawRoute(positions, deviceName, label) {
             ${routeCount > 1 ? `<div style="margin-top:4px;color:#7c3aed"><i class="fa-solid fa-code-compare mr-1"></i>${routeCount} rutas activas</div>` : ''}
         </div>
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-            <button class="popup-btn popup-btn-gray" onclick="clearSingleRoute(${JSON.stringify(label)})">
+            <button class="popup-btn popup-btn-gray" onclick="clearSingleRoute(${safeLabel})">
                 <i class="fa-solid fa-eraser"></i> Limpiar esta ruta
             </button>
             ${routeCount > 1 ? `<button class="popup-btn" style="background:#fee2e2;color:#991b1b" onclick="clearAllRoutes()">
                 <i class="fa-solid fa-trash"></i> Limpiar todas
             </button>` : ''}
         </div>`;
-    showRoutePanel(label, body);
+    showRoutePanel(deviceName ? deviceName + ' \u2014 ' + label : label, body);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -563,7 +564,11 @@ function closeRoutePanel() {
 
 function clearSingleRoute(label) {
     if (routeLayers[label]) { map.removeLayer(routeLayers[label]); delete routeLayers[label]; }
-    closeRoutePanel();
+    const routeCount = Object.keys(routeLayers).length;
+    document.getElementById('route-body').innerHTML =
+        '<p style="margin:0;color:#64748b"><i class="fa-solid fa-check-circle" style="color:#22c55e;margin-right:4px"></i>Ruta eliminada del mapa.</p>' +
+        (routeCount > 0 ? `<p style="margin:4px 0 0;color:#7c3aed;font-size:0.8rem"><i class="fa-solid fa-code-compare" style="margin-right:4px"></i>${routeCount} ruta(s) activa(s)</p>` : '') +
+        '<div style="margin-top:8px"><button class="popup-btn popup-btn-gray" onclick="closeRoutePanel()"><i class="fa-solid fa-xmark"></i> Cerrar</button></div>';
 }
 
 function clearAllRoutes() {
