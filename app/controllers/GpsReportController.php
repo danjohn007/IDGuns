@@ -36,9 +36,16 @@ class GpsReportController extends BaseController
         // Fetch route data from Traccar for each device (summary)
         $reports = [];
         if ($traccarUrl && !empty($devices)) {
+            // Build uniqueId → traccar_id map as fallback for devices without traccar_device_id
+            $traccarDeviceMap = $this->fetchTraccarDeviceMap($settings);
+
             foreach ($devices as $device) {
-                if (empty($device['traccar_device_id'])) {
-                    // No Traccar ID: include device with null data
+                $traccarId = (int)($device['traccar_device_id'] ?? 0);
+                if (!$traccarId && !empty($device['unique_id'])) {
+                    $traccarId = $traccarDeviceMap[(string)$device['unique_id']] ?? 0;
+                }
+                if (!$traccarId) {
+                    // No Traccar ID found: include device with null data
                     $reports[] = [
                         'device'          => $device,
                         'summary'         => [],
@@ -49,7 +56,7 @@ class GpsReportController extends BaseController
                     continue;
                 }
                 $summary = $this->fetchTraccarSummary(
-                    (int)$device['traccar_device_id'],
+                    $traccarId,
                     $dateFrom,
                     $dateTo,
                     $settings
@@ -130,6 +137,47 @@ class GpsReportController extends BaseController
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
+    /**
+     * Fetch all Traccar devices and return a map of uniqueId → traccar device id.
+     * Used as fallback when traccar_device_id is not stored locally.
+     */
+    private function fetchTraccarDeviceMap(array $settings): array
+    {
+        $baseUrl = rtrim($settings['traccar_url'] ?? '', '/');
+        $user    = $settings['traccar_usuario']  ?? '';
+        $pass    = $settings['traccar_password'] ?? '';
+
+        if (empty($baseUrl)) return [];
+
+        $ch = curl_init($baseUrl . '/api/devices');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_USERPWD        => $user . ':' . $pass,
+            CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,
+            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+
+        $response = curl_exec($ch);
+        $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($error || $code === 0 || $code === 401) return [];
+
+        $decoded = json_decode($response, true);
+        if (!is_array($decoded)) return [];
+
+        $map = [];
+        foreach ($decoded as $d) {
+            if (!empty($d['uniqueId']) && !empty($d['id'])) {
+                $map[(string)$d['uniqueId']] = (int)$d['id'];
+            }
+        }
+        return $map;
+    }
+
     private function fetchTraccarSummary(int $deviceId, string $dateFrom, string $dateTo, array $settings): array
     {
         $baseUrl = rtrim($settings['traccar_url'] ?? '', '/');
@@ -165,7 +213,10 @@ class GpsReportController extends BaseController
         $decoded = json_decode($response, true);
         if (!is_array($decoded)) return [];
 
-        // API returns an array; take first element for the device
+        // Traccar returns an array; handle both array and single-object responses
+        if (isset($decoded['distance']) || isset($decoded['deviceId'])) {
+            return $decoded; // single summary object
+        }
         return $decoded[0] ?? [];
     }
 }
