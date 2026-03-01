@@ -55,15 +55,52 @@ class GpsReportController extends BaseController
                     ];
                     continue;
                 }
-                $summary = $this->fetchTraccarSummary(
-                    $traccarId,
-                    $dateFrom,
-                    $dateTo,
-                    $settings
-                );
-                $kmTotal = isset($summary['distance']) ? round($summary['distance'] / 1000, 2) : null;
 
-                // Per-device km/L takes priority over the global form value
+                $today        = date('Y-m-d');
+                $isHistorical = $dateTo < $today;
+
+                // For fully historical periods, try the local cache first
+                $stored  = null;
+                $summary = [];
+                if ($isHistorical) {
+                    $stored = $this->gpsModel->findKmReporte((int)$device['id'], $dateFrom, $dateTo);
+                }
+
+                if ($stored) {
+                    // Build a summary-compatible array from cached data
+                    $summary = [
+                        'distance'    => (float)($stored['distancia_m']     ?? 0),
+                        'engineHours' => (int)($stored['engine_hours_ms']   ?? 0),
+                        'maxSpeed'    => (float)($stored['velocidad_max']   ?? 0),
+                    ];
+                } else {
+                    // Query Traccar live
+                    $summary = $this->fetchTraccarSummary(
+                        $traccarId,
+                        $dateFrom,
+                        $dateTo,
+                        $settings
+                    );
+
+                    // Persist to the local DB (cache for historical; refresh for current period)
+                    if (!empty($summary) && !isset($summary['error'])) {
+                        try {
+                            $this->gpsModel->upsertKmReporte([
+                                'dispositivo_id'    => (int)$device['id'],
+                                'traccar_device_id' => $traccarId,
+                                'fecha_desde'       => $dateFrom,
+                                'fecha_hasta'       => $dateTo,
+                                'distancia_m'       => $summary['distance']    ?? null,
+                                'engine_hours_ms'   => $summary['engineHours'] ?? null,
+                                'velocidad_max'     => $summary['maxSpeed']    ?? null,
+                            ]);
+                        } catch (\Throwable $e) {
+                            // Non-fatal: table may not exist until migration_v10 runs
+                        }
+                    }
+                }
+
+                $kmTotal = isset($summary['distance']) ? round($summary['distance'] / 1000, 2) : null;
                 $deviceKmL = !empty($device['km_por_litro']) ? (float)$device['km_por_litro'] : $kmPorLitro;
                 $litrosEstimados = ($deviceKmL > 0 && $kmTotal !== null) ? round($kmTotal / $deviceKmL, 2) : null;
                 $costoEstimado   = ($litrosEstimados !== null) ? round($litrosEstimados * $precioPorLitro, 2) : null;
@@ -186,8 +223,23 @@ class GpsReportController extends BaseController
 
         if (empty($baseUrl)) return [];
 
-        $from = $dateFrom . 'T00:00:00Z';
-        $to   = $dateTo   . 'T23:59:59Z';
+        // Build timestamps using the configured local timezone so Traccar
+        // returns positions for the correct local day boundaries (not UTC midnight).
+        $timezone = $settings['app_timezone'] ?? 'America/Mexico_City';
+        try {
+            $tz     = new \DateTimeZone($timezone);
+            $dt     = new \DateTime('now', $tz);
+            $offSec = $dt->getOffset(); // seconds east of UTC
+            $sign   = $offSec >= 0 ? '+' : '-';
+            $hh     = str_pad((string)abs((int)($offSec / 3600)),        2, '0', STR_PAD_LEFT);
+            $mm     = str_pad((string)abs((int)(($offSec % 3600) / 60)), 2, '0', STR_PAD_LEFT);
+            $tzStr  = $sign . $hh . ':' . $mm;
+        } catch (\Throwable $e) {
+            $tzStr = '+00:00'; // fallback: UTC
+        }
+
+        $from = $dateFrom . 'T00:00:00' . $tzStr;
+        $to   = $dateTo   . 'T23:59:59' . $tzStr;
 
         $url = $baseUrl . '/api/reports/summary?deviceId=' . $deviceId
              . '&from=' . urlencode($from)
