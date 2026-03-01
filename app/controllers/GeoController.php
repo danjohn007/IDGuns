@@ -71,6 +71,30 @@ class GeoController extends BaseController
     }
 
     /**
+     * Proxy: GET /geolocalizacion/resumen?deviceId=X&from=Y&to=Z
+     * Returns route summary (distance, engineHours, maxSpeed) for a device and date range.
+     */
+    public function summary(): void
+    {
+        $this->requireAuth();
+
+        $deviceId = (int) ($_GET['deviceId'] ?? 0);
+        $from     = $_GET['from'] ?? date('Y-m-01') . 'T00:00:00Z';
+        $to       = $_GET['to']   ?? date('Y-m-d')  . 'T23:59:59Z';
+
+        if (!$deviceId) {
+            $this->json(['error' => 'deviceId requerido'], 400);
+        }
+
+        $data = $this->traccarGet(
+            '/api/reports/summary?deviceId=' . $deviceId
+            . '&from=' . urlencode($from)
+            . '&to='   . urlencode($to)
+        );
+        $this->json($data);
+    }
+
+    /**
      * Proxy: GET /geolocalizacion/dispositivos
      * Returns devices list from Traccar API.
      */

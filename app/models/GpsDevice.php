@@ -38,6 +38,15 @@ class GpsDevice extends BaseModel
         return $this->insert($data);
     }
 
+    /** Persist per-device km/Litro value */
+    public function updateKmPorLitro(int $id, ?float $kmL): bool
+    {
+        return $this->execute(
+            "UPDATE dispositivos_gps SET km_por_litro = :kml WHERE id = :id",
+            [':kml' => $kmL, ':id' => $id]
+        );
+    }
+
     /** Traccar category labels */
     public static function getCategoryOptions(): array
     {
