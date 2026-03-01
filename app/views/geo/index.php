@@ -444,16 +444,22 @@ function openHistoryModal(deviceId, deviceName) {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
     const html = `
         <div style="font-size:0.83rem">
-            <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
                 <div>
                     <label style="color:#64748b">Desde</label><br>
                     <input type="date" id="hist-from" value="${today}" max="${today}"
                            style="border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:0.82rem">
+                    <br>
+                    <input type="time" id="hist-from-time" value="00:00"
+                           style="border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:0.82rem;margin-top:4px">
                 </div>
                 <div>
                     <label style="color:#64748b">Hasta</label><br>
                     <input type="date" id="hist-to"   value="${today}" max="${today}"
                            style="border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:0.82rem">
+                    <br>
+                    <input type="time" id="hist-to-time" value="23:59"
+                           style="border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:0.82rem;margin-top:4px">
                 </div>
             </div>
             <button class="popup-btn popup-btn-blue" onclick="loadHistoryRoute(${deviceId}, '${escHtml(deviceName)}')">
@@ -464,16 +470,20 @@ function openHistoryModal(deviceId, deviceName) {
 }
 
 async function loadHistoryRoute(deviceId, deviceName) {
-    const today  = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
-    const offset = getTzOffsetStr(TZ);
-    const from = (document.getElementById('hist-from')?.value || today) + 'T00:00:00' + offset;
-    const to   = (document.getElementById('hist-to')?.value   || today) + 'T23:59:59' + offset;
+    const today    = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+    const offset   = getTzOffsetStr(TZ);
+    const fromDate = document.getElementById('hist-from')?.value      || today;
+    const toDate   = document.getElementById('hist-to')?.value        || today;
+    const fromTime = document.getElementById('hist-from-time')?.value || '00:00';
+    const toTime   = document.getElementById('hist-to-time')?.value   || '23:59';
+    const from     = fromDate + 'T' + fromTime + ':00' + offset;
+    const to       = toDate   + 'T' + toTime   + ':59' + offset;
     showRoutePanel('Historial — ' + deviceName, '<span class="spinner"></span> Cargando historial…');
 
     try {
         const res  = await fetch(`${BASE_URL}/geolocalizacion/ruta?deviceId=${deviceId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
         const data = await res.json();
-        const label = 'Historial ' + from.split('T')[0] + ' → ' + to.split('T')[0];
+        const label = 'Historial ' + fromDate + ' ' + fromTime + ' → ' + toDate + ' ' + toTime;
         drawRoute(data, deviceName, label);
     } catch (e) {
         showRoutePanel(deviceName, '<span style="color:red">Error al cargar el historial.</span>');
