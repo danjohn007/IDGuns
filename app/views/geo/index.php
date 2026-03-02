@@ -116,13 +116,14 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
 <script>
-const BASE_URL       = '<?= BASE_URL ?>';
-const TRACCAR_URL    = <?= json_encode($traccarUrl) ?>;
-const LOCAL_DEVICES  = <?= json_encode($devices) ?>;
-const TZ             = <?= json_encode($timezone ?? 'America/Mexico_City') ?>;
-const PRE_DEVICE     = <?= json_encode($preDevice ?? 0) ?>;
-const PRE_FROM       = <?= json_encode($preFrom   ?? date('Y-m-01')) ?>;
-const PRE_TO         = <?= json_encode($preTo     ?? date('Y-m-d')) ?>;
+const BASE_URL            = '<?= BASE_URL ?>';
+const TRACCAR_URL         = <?= json_encode($traccarUrl) ?>;
+const LOCAL_DEVICES       = <?= json_encode($devices) ?>;
+const TZ                  = <?= json_encode($timezone ?? 'America/Mexico_City') ?>;
+const PRE_DEVICE          = <?= json_encode($preDevice ?? 0) ?>;
+const PRE_FROM            = <?= json_encode($preFrom   ?? date('Y-m-01')) ?>;
+const PRE_TO              = <?= json_encode($preTo     ?? date('Y-m-d')) ?>;
+const DEFAULT_FUEL_PRICE  = 22.5; // MXN avg price per litre
 
 // ── Map init ─────────────────────────────────────────────────────────────────
 const map = L.map('geo-map', { zoomControl: true }).setView([20.5888, -100.3899], 13);
@@ -307,6 +308,7 @@ async function openDevicePopup(marker, pos, dev, local) {
             ${pos.altitude ? `<tr><td>Altitud</td><td>${pos.altitude.toFixed(0)} m</td></tr>` : ''}
             ${dev.model ? `<tr><td>Modelo</td><td>${escHtml(dev.model)}</td></tr>` : ''}
             <tr id="row-km-${pos.deviceId}"><td>Km del mes</td><td><span class="spinner" style="width:12px;height:12px;border-width:2px"></span></td></tr>
+            <tr id="row-litros-${pos.deviceId}"><td>Litros est.</td><td><span style="color:#9ca3af">—</span></td></tr>
             <tr id="row-costo-${pos.deviceId}"><td>Costo est.</td><td><span style="color:#9ca3af">—</span></td></tr>
         </table>
         <div class="popup-actions">
@@ -360,11 +362,18 @@ async function loadMonthSummary(traccarDeviceId, local) {
 
         if (costoRow && km !== null) {
             const kml = local && local.km_por_litro ? parseFloat(local.km_por_litro) : 0;
+            const litrosRow = document.getElementById('row-litros-' + traccarDeviceId);
             if (kml > 0) {
                 const litros = parseFloat(km) / kml;
-                const costo  = (litros * 22.5).toFixed(2); // default MXN avg price
+                const costo  = (litros * DEFAULT_FUEL_PRICE).toFixed(2);
+                if (litrosRow) {
+                    litrosRow.cells[1].innerHTML = `<strong style="color:#0891b2">${litros.toFixed(2)} L</strong>`;
+                }
                 costoRow.cells[1].innerHTML = `<strong style="color:#059669">$${Number(costo).toLocaleString('es-MX', {minimumFractionDigits:2})} MXN</strong>`;
             } else {
+                if (litrosRow) {
+                    litrosRow.cells[1].innerHTML = '<span style="color:#9ca3af;font-size:0.75rem">Asigne km/L en Reportes GPS</span>';
+                }
                 costoRow.cells[1].innerHTML = '<span style="color:#9ca3af;font-size:0.75rem">Asigne km/L en Reportes GPS</span>';
             }
         }
