@@ -25,6 +25,15 @@ class GeoController extends BaseController
         $traccarUrl = rtrim($settings['traccar_url'] ?? '', '/');
         $timezone   = $settings['app_timezone'] ?? 'America/Mexico_City';
 
+        // Pre-selected device from GPS Reports → Mapa deep-link
+        $preDevice = (int) ($_GET['device'] ?? 0);
+        $rawFrom   = $_GET['from'] ?? '';
+        $rawTo     = $_GET['to']   ?? '';
+        $dtFrom    = \DateTime::createFromFormat('Y-m-d', $rawFrom);
+        $dtTo      = \DateTime::createFromFormat('Y-m-d', $rawTo);
+        $preFrom   = ($dtFrom && $dtFrom->format('Y-m-d') === $rawFrom) ? $rawFrom : date('Y-m-01');
+        $preTo     = ($dtTo   && $dtTo->format('Y-m-d')   === $rawTo)   ? $rawTo   : date('Y-m-d');
+
         $this->render('geo/index', [
             'title'      => 'Geolocalización',
             'flash'      => $this->getFlash(),
@@ -32,6 +41,9 @@ class GeoController extends BaseController
             'traccarUrl' => $traccarUrl,
             'timezone'   => $timezone,
             'csrf'       => $this->csrfToken(),
+            'preDevice'  => $preDevice,
+            'preFrom'    => $preFrom,
+            'preTo'      => $preTo,
         ]);
     }
 

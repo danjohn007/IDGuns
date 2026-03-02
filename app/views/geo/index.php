@@ -120,6 +120,9 @@ const BASE_URL       = '<?= BASE_URL ?>';
 const TRACCAR_URL    = <?= json_encode($traccarUrl) ?>;
 const LOCAL_DEVICES  = <?= json_encode($devices) ?>;
 const TZ             = <?= json_encode($timezone ?? 'America/Mexico_City') ?>;
+const PRE_DEVICE     = <?= json_encode($preDevice ?? 0) ?>;
+const PRE_FROM       = <?= json_encode($preFrom   ?? date('Y-m-01')) ?>;
+const PRE_TO         = <?= json_encode($preTo     ?? date('Y-m-d')) ?>;
 
 // ── Map init ─────────────────────────────────────────────────────────────────
 const map = L.map('geo-map', { zoomControl: true }).setView([20.5888, -100.3899], 13);
@@ -227,6 +230,22 @@ async function loadPositions() {
         if (allMarkers.length > 0) {
             const group = L.featureGroup(allMarkers);
             map.fitBounds(group.getBounds().pad(0.2));
+        }
+
+        // Auto-load month route when arriving via deep-link from GPS Reports → Mapa
+        if (PRE_DEVICE) {
+            const devName = (deviceMap[PRE_DEVICE] && deviceMap[PRE_DEVICE].name)
+                          || (localDeviceMap[PRE_DEVICE] && localDeviceMap[PRE_DEVICE].nombre)
+                          || ('Dispositivo #' + PRE_DEVICE);
+            const offset  = getTzOffsetStr(TZ);
+            const from    = PRE_FROM + 'T00:00:00' + offset;
+            const to      = PRE_TO   + 'T23:59:59' + offset;
+            const label   = 'Ruta del período (' + PRE_FROM + ' → ' + PRE_TO + ')';
+            showRoutePanel(devName, '<span class="spinner"></span> Cargando ruta del período…');
+            fetch(`${BASE_URL}/geolocalizacion/ruta?deviceId=${PRE_DEVICE}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+                .then(r => r.json())
+                .then(data => drawRoute(data, devName, label))
+                .catch(() => showRoutePanel(devName, '<span style="color:red">Error al cargar la ruta.</span>'));
         }
     } catch (e) {
         console.error('Error loading positions:', e);

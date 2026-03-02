@@ -48,6 +48,7 @@ class GpsReportController extends BaseController
                     // No Traccar ID found: include device with null data
                     $reports[] = [
                         'device'          => $device,
+                        'traccar_id'      => 0,
                         'summary'         => [],
                         'km_total'        => null,
                         'litros_estimados'=> null,
@@ -106,6 +107,7 @@ class GpsReportController extends BaseController
                 $costoEstimado   = ($litrosEstimados !== null) ? round($litrosEstimados * $precioPorLitro, 2) : null;
                 $reports[] = [
                     'device'          => $device,
+                    'traccar_id'      => $traccarId,
                     'summary'         => $summary,
                     'km_total'        => $kmTotal,
                     'litros_estimados'=> $litrosEstimados,
@@ -117,6 +119,7 @@ class GpsReportController extends BaseController
             foreach ($devices as $device) {
                 $reports[] = [
                     'device'          => $device,
+                    'traccar_id'      => 0,
                     'summary'         => [],
                     'km_total'        => null,
                     'litros_estimados'=> null,
