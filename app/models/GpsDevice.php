@@ -47,6 +47,56 @@ class GpsDevice extends BaseModel
         );
     }
 
+    /**
+     * Find a cached km report for a device and date range.
+     * Returns the row array or null when not found.
+     */
+    public function findKmReporte(int $dispositivoId, string $desde, string $hasta): ?array
+    {
+        return $this->queryOne(
+            "SELECT * FROM gps_km_reportes
+             WHERE dispositivo_id = :did
+               AND fecha_desde    = :desde
+               AND fecha_hasta    = :hasta
+             LIMIT 1",
+            [':did' => $dispositivoId, ':desde' => $desde, ':hasta' => $hasta]
+        );
+    }
+
+    /**
+     * Insert or update a km report row (cache from Traccar API).
+     * Expects keys: dispositivo_id, traccar_device_id, fecha_desde, fecha_hasta,
+     *               distancia_m, engine_hours_ms, velocidad_max.
+     */
+    public function upsertKmReporte(array $data): bool
+    {
+        return $this->execute(
+            "INSERT INTO gps_km_reportes
+                 (dispositivo_id, traccar_device_id, fecha_desde, fecha_hasta,
+                  distancia_m, engine_hours_ms, velocidad_max, consultado_at)
+             VALUES
+                 (:did, :tid, :desde, :hasta,
+                  :dist, :eh, :vmax, NOW())
+             ON DUPLICATE KEY UPDATE
+                 distancia_m       = :u_dist,
+                 engine_hours_ms   = :u_eh,
+                 velocidad_max     = :u_vmax,
+                 consultado_at     = NOW()",
+            [
+                ':did'    => $data['dispositivo_id'],
+                ':tid'    => $data['traccar_device_id'],
+                ':desde'  => $data['fecha_desde'],
+                ':hasta'  => $data['fecha_hasta'],
+                ':dist'   => $data['distancia_m'],
+                ':eh'     => $data['engine_hours_ms'],
+                ':vmax'   => $data['velocidad_max'],
+                ':u_dist' => $data['distancia_m'],
+                ':u_eh'   => $data['engine_hours_ms'],
+                ':u_vmax' => $data['velocidad_max'],
+            ]
+        );
+    }
+
     /** Traccar category labels */
     public static function getCategoryOptions(): array
     {
