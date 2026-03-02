@@ -136,6 +136,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const markers        = {};   // deviceId → marker
 let   routeLayers    = {};   // label → layerGroup (supports multiple routes)
 let   activeDeviceId = null;
+let   preDeviceLoaded = false; // ensures PRE_DEVICE route is drawn only once
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function makeIcon(color) {
@@ -225,15 +226,22 @@ async function loadPositions() {
             }
         });
 
-        // Fit map to markers
-        const allMarkers = Object.values(markers);
-        if (allMarkers.length > 0) {
-            const group = L.featureGroup(allMarkers);
-            map.fitBounds(group.getBounds().pad(0.2));
+        // Fit map to markers — skip when the pre-selected device route is about to
+        // call its own fitBounds; firing two fitBounds in a row orphans tile requests
+        // and leaves white tile blocks on the map.
+        if (!PRE_DEVICE || preDeviceLoaded) {
+            const allMarkers = Object.values(markers);
+            if (allMarkers.length > 0) {
+                const group = L.featureGroup(allMarkers);
+                map.fitBounds(group.getBounds().pad(0.2));
+            }
         }
 
-        // Auto-load month route when arriving via deep-link from GPS Reports → Mapa
-        if (PRE_DEVICE) {
+        // Auto-load month route when arriving via deep-link from GPS Reports → Mapa.
+        // Guard with !preDeviceLoaded so the auto-refresh (every 30 s) does NOT
+        // re-fetch the route, re-pan the map, or re-show the spinner on every cycle.
+        if (PRE_DEVICE && !preDeviceLoaded) {
+            preDeviceLoaded = true;
             const devName = (deviceMap[PRE_DEVICE] && deviceMap[PRE_DEVICE].name)
                           || (localDeviceMap[PRE_DEVICE] && localDeviceMap[PRE_DEVICE].nombre)
                           || ('Dispositivo #' + PRE_DEVICE);
@@ -244,7 +252,12 @@ async function loadPositions() {
             showRoutePanel(devName, '<span class="spinner"></span> Cargando ruta del período…');
             fetch(`${BASE_URL}/geolocalizacion/ruta?deviceId=${PRE_DEVICE}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
                 .then(r => r.json())
-                .then(data => drawRoute(data, devName, label))
+                .then(data => {
+                    drawRoute(data, devName, label);
+                    // After drawRoute calls fitBounds the Leaflet container may have
+                    // stale tile grid dimensions — invalidate so every tile cell repaints.
+                    setTimeout(() => map.invalidateSize(false), 100);
+                })
                 .catch(() => showRoutePanel(devName, '<span style="color:red">Error al cargar la ruta.</span>'));
         }
     } catch (e) {
