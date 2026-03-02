@@ -116,10 +116,14 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
 <script>
-const BASE_URL       = '<?= BASE_URL ?>';
-const TRACCAR_URL    = <?= json_encode($traccarUrl) ?>;
-const LOCAL_DEVICES  = <?= json_encode($devices) ?>;
-const TZ             = <?= json_encode($timezone ?? 'America/Mexico_City') ?>;
+const BASE_URL            = '<?= BASE_URL ?>';
+const TRACCAR_URL         = <?= json_encode($traccarUrl) ?>;
+const LOCAL_DEVICES       = <?= json_encode($devices) ?>;
+const TZ                  = <?= json_encode($timezone ?? 'America/Mexico_City') ?>;
+const PRE_DEVICE          = <?= json_encode($preDevice ?? 0) ?>;
+const PRE_FROM            = <?= json_encode($preFrom   ?? date('Y-m-01')) ?>;
+const PRE_TO              = <?= json_encode($preTo     ?? date('Y-m-d')) ?>;
+const DEFAULT_FUEL_PRICE  = 22.5; // MXN avg price per litre
 
 // ── Map init ─────────────────────────────────────────────────────────────────
 const map = L.map('geo-map', { zoomControl: true }).setView([20.5888, -100.3899], 13);
@@ -133,6 +137,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const markers        = {};   // deviceId → marker
 let   routeLayers    = {};   // label → layerGroup (supports multiple routes)
 let   activeDeviceId = null;
+let   preDeviceLoaded = false; // ensures PRE_DEVICE route is drawn only once
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function makeIcon(color) {
@@ -222,11 +227,39 @@ async function loadPositions() {
             }
         });
 
-        // Fit map to markers
-        const allMarkers = Object.values(markers);
-        if (allMarkers.length > 0) {
-            const group = L.featureGroup(allMarkers);
-            map.fitBounds(group.getBounds().pad(0.2));
+        // Fit map to markers — skip when the pre-selected device route is about to
+        // call its own fitBounds; firing two fitBounds in a row orphans tile requests
+        // and leaves white tile blocks on the map.
+        if (!PRE_DEVICE || preDeviceLoaded) {
+            const allMarkers = Object.values(markers);
+            if (allMarkers.length > 0) {
+                const group = L.featureGroup(allMarkers);
+                map.fitBounds(group.getBounds().pad(0.2));
+            }
+        }
+
+        // Auto-load month route when arriving via deep-link from GPS Reports → Mapa.
+        // Guard with !preDeviceLoaded so the auto-refresh (every 30 s) does NOT
+        // re-fetch the route, re-pan the map, or re-show the spinner on every cycle.
+        if (PRE_DEVICE && !preDeviceLoaded) {
+            preDeviceLoaded = true;
+            const devName = (deviceMap[PRE_DEVICE] && deviceMap[PRE_DEVICE].name)
+                          || (localDeviceMap[PRE_DEVICE] && localDeviceMap[PRE_DEVICE].nombre)
+                          || ('Dispositivo #' + PRE_DEVICE);
+            const offset  = getTzOffsetStr(TZ);
+            const from    = PRE_FROM + 'T00:00:00' + offset;
+            const to      = PRE_TO   + 'T23:59:59' + offset;
+            const label   = 'Ruta del período (' + PRE_FROM + ' → ' + PRE_TO + ')';
+            showRoutePanel(devName, '<span class="spinner"></span> Cargando ruta del período…');
+            fetch(`${BASE_URL}/geolocalizacion/ruta?deviceId=${PRE_DEVICE}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+                .then(r => r.json())
+                .then(data => {
+                    drawRoute(data, devName, label);
+                    // After drawRoute calls fitBounds the Leaflet container may have
+                    // stale tile grid dimensions — invalidate so every tile cell repaints.
+                    setTimeout(() => map.invalidateSize(false), 100);
+                })
+                .catch(() => showRoutePanel(devName, '<span style="color:red">Error al cargar la ruta.</span>'));
         }
     } catch (e) {
         console.error('Error loading positions:', e);
@@ -275,6 +308,7 @@ async function openDevicePopup(marker, pos, dev, local) {
             ${pos.altitude ? `<tr><td>Altitud</td><td>${pos.altitude.toFixed(0)} m</td></tr>` : ''}
             ${dev.model ? `<tr><td>Modelo</td><td>${escHtml(dev.model)}</td></tr>` : ''}
             <tr id="row-km-${pos.deviceId}"><td>Km del mes</td><td><span class="spinner" style="width:12px;height:12px;border-width:2px"></span></td></tr>
+            <tr id="row-litros-${pos.deviceId}"><td>Litros est.</td><td><span style="color:#9ca3af">—</span></td></tr>
             <tr id="row-costo-${pos.deviceId}"><td>Costo est.</td><td><span style="color:#9ca3af">—</span></td></tr>
         </table>
         <div class="popup-actions">
@@ -328,11 +362,18 @@ async function loadMonthSummary(traccarDeviceId, local) {
 
         if (costoRow && km !== null) {
             const kml = local && local.km_por_litro ? parseFloat(local.km_por_litro) : 0;
+            const litrosRow = document.getElementById('row-litros-' + traccarDeviceId);
             if (kml > 0) {
                 const litros = parseFloat(km) / kml;
-                const costo  = (litros * 22.5).toFixed(2); // default MXN avg price
+                const costo  = (litros * DEFAULT_FUEL_PRICE).toFixed(2);
+                if (litrosRow) {
+                    litrosRow.cells[1].innerHTML = `<strong style="color:#0891b2">${litros.toFixed(2)} L</strong>`;
+                }
                 costoRow.cells[1].innerHTML = `<strong style="color:#059669">$${Number(costo).toLocaleString('es-MX', {minimumFractionDigits:2})} MXN</strong>`;
             } else {
+                if (litrosRow) {
+                    litrosRow.cells[1].innerHTML = '<span style="color:#9ca3af;font-size:0.75rem">Asigne km/L en Reportes GPS</span>';
+                }
                 costoRow.cells[1].innerHTML = '<span style="color:#9ca3af;font-size:0.75rem">Asigne km/L en Reportes GPS</span>';
             }
         }

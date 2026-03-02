@@ -173,9 +173,9 @@ $today = date('Y-m-d');
                 </td>
                 <td class="px-4 py-3 text-center">
                     <div class="flex flex-col gap-1.5 items-center">
-                        <?php if ($traccarUrl && !empty($d['traccar_device_id'])): ?>
-                        <a href="<?= BASE_URL ?>/geolocalizacion"
-                           title="Ver en mapa"
+                        <?php if ($traccarUrl && !empty($r['traccar_id'])): ?>
+                        <a href="<?= BASE_URL ?>/geolocalizacion?device=<?= (int)$r['traccar_id'] ?>&from=<?= date('Y-m-01') ?>&to=<?= date('Y-m-d') ?>"
+                           title="Ver ruta del mes en curso en mapa"
                            class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1 rounded hover:bg-indigo-50 transition-colors">
                             <i class="fa-solid fa-map-location-dot"></i> Mapa
                         </a>
