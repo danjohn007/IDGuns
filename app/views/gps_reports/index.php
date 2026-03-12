@@ -1,5 +1,13 @@
 <?php
 $today = date('Y-m-d');
+$devicesJson = json_encode(array_map(function($d) {
+    return [
+        'id'                => (int)$d['id'],
+        'traccar_device_id' => (int)($d['traccar_device_id'] ?? 0),
+        'unique_id'         => (string)($d['unique_id'] ?? ''),
+        'km_por_litro'      => $d['km_por_litro'] !== null && $d['km_por_litro'] !== '' ? (float)$d['km_por_litro'] : null,
+    ];
+}, $devices), JSON_HEX_TAG | JSON_HEX_AMP);
 ?>
 <!-- Toolbar / Filters -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-5">
@@ -60,40 +68,34 @@ $today = date('Y-m-d');
 </div>
 <?php endif; ?>
 
-<!-- Period summary banner -->
+<!-- Period summary banner (updated dynamically by JS) -->
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-    <?php
-    $totalKm     = 0;
-    $totalLitros = 0;
-    $totalCosto  = 0;
-    foreach ($reports as $r) {
-        $totalKm     += $r['km_total'] ?? 0;
-        $totalLitros += $r['litros_estimados'] ?? 0;
-        $totalCosto  += $r['costo_estimado'] ?? 0;
-    }
-    ?>
     <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
         <p class="text-xs text-indigo-500 font-medium uppercase tracking-wide">Total km recorridos</p>
-        <p class="text-2xl font-bold text-indigo-700 mt-1"><?= number_format($totalKm, 1) ?> km</p>
+        <p id="total-km" class="text-2xl font-bold text-indigo-700 mt-1">
+            <i class="fa-solid fa-spinner fa-spin text-sm text-indigo-300"></i>
+        </p>
         <p class="text-xs text-indigo-400 mt-0.5"><?= htmlspecialchars($dateFrom) ?> → <?= htmlspecialchars($dateTo) ?></p>
     </div>
     <div class="bg-orange-50 rounded-xl p-4 border border-orange-100">
         <p class="text-xs text-orange-500 font-medium uppercase tracking-wide">Litros estimados</p>
-        <p class="text-2xl font-bold text-orange-700 mt-1">
-            <?= $kmPorLitro > 0 ? number_format($totalLitros, 1) . ' L' : '—' ?>
+        <p id="total-litros" class="text-2xl font-bold text-orange-700 mt-1">
+            <i class="fa-solid fa-spinner fa-spin text-sm text-orange-300"></i>
         </p>
         <p class="text-xs text-orange-400 mt-0.5">
-            <?= $kmPorLitro > 0 ? htmlspecialchars($kmPorLitro) . ' km/L' : 'Ingrese km/L para calcular' ?>
+            <?php if ($kmPorLitro > 0): ?>
+                <?= htmlspecialchars($kmPorLitro) ?> km/L (global)
+            <?php else: ?>
+                Usando km/L individual por dispositivo
+            <?php endif; ?>
         </p>
     </div>
     <div class="bg-green-50 rounded-xl p-4 border border-green-100">
         <p class="text-xs text-green-600 font-medium uppercase tracking-wide">Costo estimado</p>
-        <p class="text-2xl font-bold text-green-700 mt-1">
-            <?= $kmPorLitro > 0 ? '$' . number_format($totalCosto, 2) : '—' ?>
+        <p id="total-costo" class="text-2xl font-bold text-green-700 mt-1">
+            <i class="fa-solid fa-spinner fa-spin text-sm text-green-300"></i>
         </p>
-        <p class="text-xs text-green-500 mt-0.5">
-            <?= $kmPorLitro > 0 ? '@ $' . number_format($precioPorLitro, 2) . '/L' : 'Ingrese precio por litro' ?>
-        </p>
+        <p class="text-xs text-green-500 mt-0.5">@ $<?= number_format($precioPorLitro, 2) ?>/L</p>
     </div>
 </div>
 
@@ -103,7 +105,7 @@ $today = date('Y-m-d');
         <h3 class="font-semibold text-gray-700 text-sm">
             <i class="fa-solid fa-satellite-dish mr-2 text-indigo-500"></i>
             Detalle por Dispositivo GPS
-            <span class="ml-2 bg-indigo-100 text-indigo-600 text-xs px-2 py-0.5 rounded-full"><?= count($reports) ?></span>
+            <span class="ml-2 bg-indigo-100 text-indigo-600 text-xs px-2 py-0.5 rounded-full"><?= count($devices) ?></span>
         </h3>
         <button onclick="window.print()"
                 class="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
@@ -111,7 +113,7 @@ $today = date('Y-m-d');
         </button>
     </div>
 
-    <?php if (empty($reports)): ?>
+    <?php if (empty($devices)): ?>
     <div class="py-16 text-center text-gray-400">
         <i class="fa-solid fa-satellite-dish text-4xl block mb-3"></i>
         No hay dispositivos GPS registrados.
@@ -136,16 +138,8 @@ $today = date('Y-m-d');
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-            <?php foreach ($reports as $r):
-                $d   = $r['device'];
-                $s   = $r['summary'];
-                $km  = $r['km_total'];
-                $lit = $r['litros_estimados'];
-                $cos = $r['costo_estimado'];
-                $maxSpeed = isset($s['maxSpeed']) ? round($s['maxSpeed'] * 1.852, 1) : null;
-                $duration = isset($s['engineHours']) ? gmdate('H:i', (int)($s['engineHours'] / 1000)) : null;
-            ?>
-            <tr class="hover:bg-gray-50">
+            <?php foreach ($devices as $idx => $d): ?>
+            <tr class="hover:bg-gray-50" id="row-<?= $idx ?>">
                 <td class="px-4 py-3">
                     <p class="font-semibold text-gray-800"><?= htmlspecialchars($d['nombre'], ENT_QUOTES, 'UTF-8') ?></p>
                     <p class="text-xs text-gray-400 font-mono mt-0.5">
@@ -156,26 +150,40 @@ $today = date('Y-m-d');
                     </p>
                 </td>
                 <td class="px-4 py-3 font-mono text-xs text-gray-600"><?= htmlspecialchars($d['unique_id'], ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="px-4 py-3 text-right font-semibold <?= $km !== null && $km > 0 ? 'text-indigo-700' : 'text-gray-400' ?>">
-                    <?= $km !== null ? number_format($km, 2) : ($traccarUrl ? '<span class="text-gray-300">—</span>' : '<span class="text-gray-300 text-xs">Sin Traccar</span>') ?>
+                <!-- These cells are filled by JavaScript -->
+                <td class="px-4 py-3 text-right font-semibold text-gray-400" id="km-<?= $idx ?>">
+                    <?php if (!empty($traccarUrl) && !empty($d['traccar_device_id'])): ?>
+                    <i class="fa-solid fa-spinner fa-spin text-xs text-gray-300"></i>
+                    <?php else: ?>
+                    <span class="text-gray-300 text-xs"><?= empty($traccarUrl) ? 'Sin Traccar' : 'Sin ID Traccar' ?></span>
+                    <?php endif; ?>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-600 text-xs">
-                    <?= $duration ?? '<span class="text-gray-300">—</span>' ?>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs" id="dur-<?= $idx ?>">
+                    <?php if (!empty($traccarUrl) && !empty($d['traccar_device_id'])): ?>
+                    <i class="fa-solid fa-spinner fa-spin text-xs text-gray-300"></i>
+                    <?php else: ?>
+                    <span class="text-gray-300">—</span>
+                    <?php endif; ?>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-600 text-xs">
-                    <?= $maxSpeed !== null ? $maxSpeed : '<span class="text-gray-300">—</span>' ?>
+                <td class="px-4 py-3 text-right text-gray-600 text-xs" id="spd-<?= $idx ?>">
+                    <?php if (!empty($traccarUrl) && !empty($d['traccar_device_id'])): ?>
+                    <i class="fa-solid fa-spinner fa-spin text-xs text-gray-300"></i>
+                    <?php else: ?>
+                    <span class="text-gray-300">—</span>
+                    <?php endif; ?>
                 </td>
-                <td class="px-4 py-3 text-right text-orange-600 font-medium">
-                    <?= $lit !== null ? number_format($lit, 2) . ' L' : '<span class="text-gray-300">—</span>' ?>
+                <td class="px-4 py-3 text-right text-orange-600 font-medium" id="lit-<?= $idx ?>">
+                    <span class="text-gray-300">—</span>
                 </td>
-                <td class="px-4 py-3 text-right text-green-700 font-semibold">
-                    <?= $cos !== null ? '$' . number_format($cos, 2) : '<span class="text-gray-300">—</span>' ?>
+                <td class="px-4 py-3 text-right text-green-700 font-semibold" id="cos-<?= $idx ?>">
+                    <span class="text-gray-300">—</span>
                 </td>
                 <td class="px-4 py-3 text-center">
                     <div class="flex flex-col gap-1.5 items-center">
                         <?php if ($traccarUrl && !empty($d['traccar_device_id'])): ?>
-                        <a href="<?= BASE_URL ?>/geolocalizacion"
-                           title="Ver en mapa"
+                        <a id="mapa-link-<?= $idx ?>"
+                           href="<?= BASE_URL ?>/geolocalizacion?deviceId=<?= urlencode($d['traccar_device_id']) ?>&from=<?= urlencode($dateFrom) ?>&to=<?= urlencode($dateTo) ?>&name=<?= urlencode($d['nombre']) ?>"
+                           title="Ver ruta en mapa para el periodo seleccionado"
                            class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2 py-1 rounded hover:bg-indigo-50 transition-colors">
                             <i class="fa-solid fa-map-location-dot"></i> Mapa
                         </a>
@@ -189,6 +197,7 @@ $today = date('Y-m-d');
                                    value="<?= htmlspecialchars($d['km_por_litro'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                    placeholder="km/L"
                                    data-device-id="<?= (int)$d['id'] ?>"
+                                   data-row-idx="<?= $idx ?>"
                                    class="kml-input border border-gray-200 rounded px-1.5 py-0.5 text-xs w-16 focus:ring-orange-400 focus:border-orange-400"
                                    aria-label="km/Litro individual">
                             <button type="button"
@@ -219,30 +228,264 @@ $today = date('Y-m-d');
 </div>
 
 <script>
-async function saveKml(btn) {
-    const wrap     = btn.closest('div');
-    const input    = wrap.querySelector('.kml-input');
-    const deviceId = input ? input.dataset.deviceId : null;
-    if (!deviceId) return;
+(function() {
+    const BASE      = <?= json_encode(rtrim(BASE_URL, '/')) ?>;
+    const devices   = <?= $devicesJson ?>;
+    const dateFrom  = <?= json_encode($dateFrom) ?>;
+    const dateTo    = <?= json_encode($dateTo) ?>;
+    const globalKmL = <?= json_encode($kmPorLitro) ?>;
+    const precioL   = <?= json_encode($precioPorLitro) ?>;
 
-    const formData = new FormData();
-    formData.append('device_id',   deviceId);
-    formData.append('km_por_litro', input.value);
+    const kmData = {};
 
-    btn.disabled = true;
-    try {
-        const res  = await fetch('<?= BASE_URL ?>/reportes-gps/guardar-km', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.ok) {
-            input.classList.add('border-green-400');
-            setTimeout(() => input.classList.remove('border-green-400'), 1500);
-        } else {
-            alert('Error: ' + (data.error || 'No se pudo guardar'));
-        }
-    } catch (e) {
-        alert('Error de conexión al guardar km/L: ' + e.message);
-    } finally {
-        btn.disabled = false;
+    // Auto-fix incorrect traccar_device_id in DB (fire-and-forget)
+    function fixTraccarIdInDb(localDeviceId, realTraccarId) {
+        const fd = new FormData();
+        fd.append('device_id', localDeviceId);
+        fd.append('real_traccar_id', realTraccarId);
+        fetch(BASE + '/reportes-gps/fix-traccar-id', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => { if (d.ok) console.log('DB corregida para device', localDeviceId, '→', realTraccarId); })
+            .catch(() => {});
     }
-}
+
+    function fmtDuration(ms) {
+        if (!ms || ms <= 0) return '—';
+        const totalSec = Math.floor(ms / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        return (h > 0 ? h + 'h ' : '') + m + 'min';
+    }
+
+    function updateTotals() {
+        let totalKm = 0, totalLit = 0, totalCos = 0;
+        for (const idx in kmData) {
+            const d   = kmData[idx];
+            totalKm  += d.km || 0;
+            totalLit += d.litros || 0;
+            totalCos += d.costo || 0;
+        }
+        document.getElementById('total-km').textContent     = totalKm.toFixed(1) + ' km';
+        document.getElementById('total-litros').textContent  = totalLit > 0 ? totalLit.toFixed(1) + ' L' : '—';
+        document.getElementById('total-costo').textContent   = totalCos > 0 ? '$' + totalCos.toFixed(2) : '—';
+    }
+
+    function calcFuel(idx) {
+        const d = kmData[idx];
+        if (!d || d.km === null) return;
+
+        const deviceInfo = devices[idx];
+        const kml = deviceInfo.km_por_litro || globalKmL;
+
+        if (kml > 0 && d.km > 0) {
+            d.litros = +(d.km / kml).toFixed(2);
+            d.costo  = +(d.litros * precioL).toFixed(2);
+        } else {
+            d.litros = 0;
+            d.costo  = 0;
+        }
+
+        const litCell = document.getElementById('lit-' + idx);
+        const cosCell = document.getElementById('cos-' + idx);
+        if (litCell) litCell.innerHTML = d.litros > 0
+            ? '<span class="text-orange-600 font-medium">' + d.litros.toFixed(2) + ' L</span>'
+            : '<span class="text-gray-300">—</span>';
+        if (cosCell) cosCell.innerHTML = d.costo > 0
+            ? '<span class="text-green-700 font-semibold">$' + d.costo.toFixed(2) + '</span>'
+            : '<span class="text-gray-300">—</span>';
+
+        updateTotals();
+    }
+
+    // Calculate distance from GPS points (same method as Geolocalización Historial)
+    function calcDistanceFromPositions(positions) {
+        let d = 0;
+        for (let i = 1; i < positions.length; i++) {
+            const lat1 = positions[i-1].latitude, lon1 = positions[i-1].longitude;
+            const lat2 = positions[i].latitude,   lon2 = positions[i].longitude;
+            if (!lat1 || !lon1 || !lat2 || !lon2) continue;
+            // Haversine formula (meters)
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2)
+                    + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180)
+                    * Math.sin(dLon/2) * Math.sin(dLon/2);
+            d += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+        return d / 1000; // km
+    }
+
+    // Fetch route positions and calculate distance + max speed from raw data
+    async function fetchRouteDistance(traccarId) {
+        const from = dateFrom + 'T00:00:00Z';
+        const to   = dateTo   + 'T23:59:59Z';
+        const url  = BASE + '/geolocalizacion/ruta?deviceId=' + traccarId
+                     + '&from=' + encodeURIComponent(from)
+                     + '&to='   + encodeURIComponent(to);
+        try {
+            const res  = await fetch(url);
+            const data = await res.json();
+            if (!Array.isArray(data) || data.length === 0) return null;
+            const km = +calcDistanceFromPositions(data).toFixed(2);
+            let maxSpeedKnots = 0;
+            data.forEach(function(p) { if (p.speed > maxSpeedKnots) maxSpeedKnots = p.speed; });
+            return { km: km, maxSpeed: +(maxSpeedKnots * 1.852).toFixed(1), points: data.length };
+        } catch (e) {
+            console.error('Error fetching route for device', traccarId, e);
+            return null;
+        }
+    }
+
+    async function fetchSummary(idx, traccarId) {
+        const kmCell  = document.getElementById('km-'  + idx);
+        const durCell = document.getElementById('dur-' + idx);
+        const spdCell = document.getElementById('spd-' + idx);
+
+        try {
+            // Always use route points for distance (same method as Geolocalización)
+            // This ensures both views show the same km value
+            if (kmCell) kmCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs text-indigo-300"></i> <span class="text-xs text-gray-400">calculando...</span>';
+
+            // Fetch summary in parallel (only for duration/engineHours)
+            const from = dateFrom + 'T00:00:00Z';
+            const to   = dateTo   + 'T23:59:59Z';
+            const summaryUrl = BASE + '/geolocalizacion/resumen?deviceId=' + traccarId
+                         + '&from=' + encodeURIComponent(from)
+                         + '&to='   + encodeURIComponent(to);
+
+            const [routeData, summaryRes] = await Promise.all([
+                fetchRouteDistance(traccarId),
+                fetch(summaryUrl).then(r => r.json()).catch(() => null)
+            ]);
+
+            // Extract duration from summary if available
+            const summaryObj = Array.isArray(summaryRes) ? (summaryRes[0] || null) : summaryRes;
+            const duration = summaryObj && summaryObj.engineHours ? summaryObj.engineHours : 0;
+            console.log('Device', traccarId, '→ ruta:', routeData, 'resumen:', summaryObj);
+
+            if (routeData && routeData.km > 0) {
+                kmData[idx] = { km: routeData.km, litros: 0, costo: 0 };
+                if (kmCell) kmCell.innerHTML = '<span class="text-indigo-700 font-semibold">' + routeData.km.toFixed(2) + '</span>';
+                if (durCell) durCell.textContent = fmtDuration(duration);
+                if (spdCell) spdCell.textContent = routeData.maxSpeed > 0 ? routeData.maxSpeed : '—';
+                calcFuel(idx);
+            } else {
+                if (kmCell)  kmCell.innerHTML  = '<span class="text-gray-300">Sin datos</span>';
+                if (durCell) durCell.innerHTML  = '<span class="text-gray-300">—</span>';
+                if (spdCell) spdCell.innerHTML  = '<span class="text-gray-300">—</span>';
+                kmData[idx] = { km: null, litros: 0, costo: 0 };
+            }
+
+        } catch (e) {
+            console.error('Error fetching data for device', traccarId, e);
+            if (kmCell) kmCell.innerHTML = '<span class="text-red-400 text-xs">Error red</span>';
+            if (durCell) durCell.innerHTML = '<span class="text-gray-300">—</span>';
+            if (spdCell) spdCell.innerHTML = '<span class="text-gray-300">—</span>';
+            kmData[idx] = { km: null, litros: 0, costo: 0 };
+        }
+    }
+
+    // Fetch real Traccar device list, match by uniqueId (IMEI), then fetch summaries
+    async function loadAll() {
+        // Step 1: Get real device list from Traccar to resolve correct IDs
+        let traccarMap = {}; // uniqueId (IMEI string) → real Traccar device id
+        try {
+            const devRes = await fetch(BASE + '/geolocalizacion/dispositivos');
+            const traccarDevices = await devRes.json();
+            if (Array.isArray(traccarDevices)) {
+                traccarDevices.forEach(function(td) {
+                    if (td.uniqueId && td.id) {
+                        // Store with the raw uniqueId and also a cleaned version (no spaces)
+                        traccarMap[String(td.uniqueId).trim()] = td.id;
+                        traccarMap[String(td.uniqueId).replace(/\s+/g, '')] = td.id;
+                    }
+                });
+            }
+            console.log('Traccar dispositivos mapeados:', Object.keys(traccarMap).length, traccarMap);
+        } catch (e) {
+            console.error('Error fetching Traccar devices:', e);
+        }
+
+        // Step 2: For each local device, find the real Traccar ID via uniqueId match
+        for (let idx = 0; idx < devices.length; idx++) {
+            const d = devices[idx];
+            const uniqueClean = d.unique_id ? d.unique_id.replace(/\s+/g, '') : '';
+
+            // Try matching by unique_id (IMEI) first, fall back to stored traccar_device_id
+            let realTraccarId = traccarMap[uniqueClean] || traccarMap[d.unique_id] || null;
+
+            // If no match by unique_id, try the stored traccar_device_id (might be correct)
+            if (!realTraccarId && d.traccar_device_id > 0) {
+                realTraccarId = d.traccar_device_id;
+            }
+
+            if (realTraccarId) {
+                // Auto-fix DB if the stored ID was wrong
+                if (realTraccarId !== d.traccar_device_id) {
+                    console.log('Device', d.unique_id, '→ Traccar ID:', realTraccarId,
+                                '(CORREGIDO, BD tenía: ' + d.traccar_device_id + ')');
+                    fixTraccarIdInDb(d.id, realTraccarId);
+                } else {
+                    console.log('Device', d.unique_id, '→ Traccar ID:', realTraccarId, '(OK)');
+                }
+
+                // Update Mapa link with the real resolved Traccar ID
+                const mapaLink = document.getElementById('mapa-link-' + idx);
+                if (mapaLink) {
+                    mapaLink.href = BASE + '/geolocalizacion?deviceId=' + realTraccarId
+                        + '&from=' + encodeURIComponent(dateFrom)
+                        + '&to='   + encodeURIComponent(dateTo)
+                        + '&name=' + encodeURIComponent(d.unique_id);
+                }
+
+                await fetchSummary(idx, realTraccarId);
+            } else {
+                console.warn('Device', d.unique_id, '→ No se encontró en Traccar');
+            }
+        }
+        updateTotals();
+    }
+
+    if (devices.length > 0) {
+        loadAll();
+    } else {
+        document.getElementById('total-km').textContent    = '0.0 km';
+        document.getElementById('total-litros').textContent = '—';
+        document.getElementById('total-costo').textContent  = '—';
+    }
+
+    window.saveKml = async function(btn) {
+        const wrap     = btn.closest('div');
+        const input    = wrap.querySelector('.kml-input');
+        const deviceId = input ? input.dataset.deviceId : null;
+        const rowIdx   = input ? input.dataset.rowIdx : null;
+        if (!deviceId) return;
+
+        const formData = new FormData();
+        formData.append('device_id',    deviceId);
+        formData.append('km_por_litro', input.value);
+
+        btn.disabled = true;
+        try {
+            const res  = await fetch(BASE + '/reportes-gps/guardar-km', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.ok) {
+                input.classList.add('border-green-400');
+                setTimeout(function() { input.classList.remove('border-green-400'); }, 1500);
+                // Update local device km/L and recalculate
+                if (rowIdx !== null && devices[rowIdx]) {
+                    devices[rowIdx].km_por_litro = input.value !== '' ? parseFloat(input.value) : null;
+                    calcFuel(parseInt(rowIdx));
+                }
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo guardar'));
+            }
+        } catch (e) {
+            alert('Error de conexión al guardar km/L: ' + e.message);
+        } finally {
+            btn.disabled = false;
+        }
+    };
+})();
 </script>

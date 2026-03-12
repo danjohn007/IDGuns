@@ -42,6 +42,7 @@ class GeoController extends BaseController
     public function positions(): void
     {
         $this->requireAuth();
+        session_write_close();
         $data = $this->traccarGet('/api/positions');
         $this->json($data);
     }
@@ -53,6 +54,7 @@ class GeoController extends BaseController
     public function route(): void
     {
         $this->requireAuth();
+        session_write_close();
 
         $deviceId = (int) ($_GET['deviceId'] ?? 0);
         $from     = $_GET['from'] ?? date('Y-m-d') . 'T00:00:00Z';
@@ -78,6 +80,9 @@ class GeoController extends BaseController
     {
         $this->requireAuth();
 
+        // Release session lock early so parallel AJAX requests aren't blocked
+        session_write_close();
+
         $deviceId = (int) ($_GET['deviceId'] ?? 0);
         $from     = $_GET['from'] ?? date('Y-m-01') . 'T00:00:00Z';
         $to       = $_GET['to']   ?? date('Y-m-d')  . 'T23:59:59Z';
@@ -101,6 +106,7 @@ class GeoController extends BaseController
     public function apiDevices(): void
     {
         $this->requireAuth();
+        session_write_close();
         $data = $this->traccarGet('/api/devices');
         $this->json($data);
     }

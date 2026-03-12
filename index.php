@@ -81,6 +81,7 @@ $routes = [
 
     'reportes-gps'                  => ['GpsReportController', 'index'],
     'reportes-gps/guardar-km'       => ['GpsReportController', 'saveKmPorLitro'],
+    'reportes-gps/fix-traccar-id'   => ['GpsReportController', 'fixTraccarId'],
 
     'geozonas'                      => ['GeozonaController',  'index'],
     'geozonas/listar'               => ['GeozonaController',  'list'],

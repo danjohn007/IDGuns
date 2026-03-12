@@ -602,7 +602,38 @@ function escHtml(s) {
 }
 
 // ── Auto-load ─────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', loadPositions);
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadPositions();
+
+    // If arriving from Reportes GPS with ?deviceId=...&from=...&to=..., auto-load history route
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramDeviceId = urlParams.get('deviceId');
+    const paramFrom     = urlParams.get('from');
+    const paramTo       = urlParams.get('to');
+    const paramName     = urlParams.get('name') || ('Dispositivo #' + paramDeviceId);
+
+    if (paramDeviceId && paramFrom && paramTo) {
+        const offset = getTzOffsetStr(TZ);
+        const from   = paramFrom + 'T00:00:00' + offset;
+        const to     = paramTo   + 'T23:59:59' + offset;
+        const label  = 'Historial ' + paramFrom + ' → ' + paramTo;
+
+        showRoutePanel(paramName, '<span class="spinner"></span> Cargando ruta…');
+
+        try {
+            const res  = await fetch(`${BASE_URL}/geolocalizacion/ruta?deviceId=${paramDeviceId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+            const data = await res.json();
+            drawRoute(data, paramName, label);
+        } catch (e) {
+            showRoutePanel(paramName, '<span style="color:red">Error al cargar la ruta.</span>');
+        }
+
+        // Center on device marker if available
+        if (markers[parseInt(paramDeviceId)]) {
+            map.setView(markers[parseInt(paramDeviceId)].getLatLng(), 14);
+        }
+    }
+});
 
 // Auto-refresh every 30 seconds
 setInterval(loadPositions, 30000);
