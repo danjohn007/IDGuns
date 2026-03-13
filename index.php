@@ -78,6 +78,7 @@ $routes = [
     'geolocalizacion/ruta'          => ['GeoController', 'route'],
     'geolocalizacion/resumen'       => ['GeoController', 'summary'],
     'geolocalizacion/dispositivos'  => ['GeoController', 'apiDevices'],
+    'geolocalizacion/resumen-batch'  => ['GeoController', 'summaryBatch'],
 
     'reportes-gps'                  => ['GpsReportController', 'index'],
     'reportes-gps/guardar-km'       => ['GpsReportController', 'saveKmPorLitro'],

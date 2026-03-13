@@ -326,7 +326,9 @@ $devicesJson = json_encode(array_map(function($d) {
         try {
             const res  = await fetch(url);
             const data = await res.json();
+            console.log('Route response deviceId=' + traccarId, Array.isArray(data) ? data.length + ' puntos' : data);
             if (!Array.isArray(data) || data.length === 0) return null;
+            if (data.error) { console.error('Route error:', data.error); return null; }
             const km = +calcDistanceFromPositions(data).toFixed(2);
             let maxSpeedKnots = 0;
             data.forEach(function(p) { if (p.speed > maxSpeedKnots) maxSpeedKnots = p.speed; });
@@ -337,32 +339,71 @@ $devicesJson = json_encode(array_map(function($d) {
         }
     }
 
+    let lastSeenInfo = {}; // traccar device id → device info (for last-seen dates)
+
+    function delay(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+    // ── Manual test: run testDevice(61995197) in browser console ──────────
+    window.testDevice = async function(deviceId) {
+        const from = dateFrom + 'T00:00:00Z';
+        const to   = dateTo   + 'T23:59:59Z';
+        const url = BASE + '/geolocalizacion/resumen?deviceId=' + deviceId
+                    + '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+        console.log('%c[TEST] URL: ' + url, 'color:blue;font-weight:bold');
+        const res = await fetch(url, { cache: 'no-store' });
+        const txt = await res.text();
+        console.log('%c[TEST] Status: ' + res.status + '  Body: ' + txt, 'color:blue');
+        return JSON.parse(txt);
+    };
+
     async function fetchSummary(idx, traccarId) {
         const kmCell  = document.getElementById('km-'  + idx);
         const durCell = document.getElementById('dur-' + idx);
         const spdCell = document.getElementById('spd-' + idx);
 
-        try {
-            // Always use route points for distance (same method as Geolocalización)
-            // This ensures both views show the same km value
-            if (kmCell) kmCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs text-indigo-300"></i> <span class="text-xs text-gray-400">calculando...</span>';
+        const from = dateFrom + 'T00:00:00Z';
+        const to   = dateTo   + 'T23:59:59Z';
 
-            // Fetch summary in parallel (only for duration/engineHours)
-            const from = dateFrom + 'T00:00:00Z';
-            const to   = dateTo   + 'T23:59:59Z';
+        try {
+            if (kmCell) kmCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs text-indigo-300"></i> <span class="text-xs text-gray-400">resumen...</span>';
+
+            // Individual summary request (same as Geolocalización popup)
             const summaryUrl = BASE + '/geolocalizacion/resumen?deviceId=' + traccarId
                          + '&from=' + encodeURIComponent(from)
                          + '&to='   + encodeURIComponent(to);
+            console.log('[REQ] ' + summaryUrl);
+            const summaryRes = await fetch(summaryUrl, { cache: 'no-store' });
+            const rawText = await summaryRes.text();
+            console.log('[RES] status=' + summaryRes.status + ' deviceId=' + traccarId + ' body=' + rawText.substring(0, 300));
+            let summaryData;
+            try { summaryData = JSON.parse(rawText); } catch(pe) {
+                console.error('JSON parse error for device', traccarId, pe, rawText.substring(0, 200));
+                throw pe;
+            }
+            const summaryObj = Array.isArray(summaryData) ? (summaryData[0] || null) : summaryData;
+            const duration   = summaryObj && summaryObj.engineHours ? summaryObj.engineHours : 0;
+            console.log('Summary deviceId=' + traccarId, summaryObj);
 
-            const [routeData, summaryRes] = await Promise.all([
-                fetchRouteDistance(traccarId),
-                fetch(summaryUrl).then(r => r.json()).catch(() => null)
-            ]);
+            // If summary has distance, use it
+            if (summaryObj && summaryObj.distance > 0) {
+                const km       = +(summaryObj.distance / 1000).toFixed(2);
+                const maxSpeed = summaryObj.maxSpeed !== undefined ? +(summaryObj.maxSpeed * 1.852).toFixed(1) : 0;
 
-            // Extract duration from summary if available
-            const summaryObj = Array.isArray(summaryRes) ? (summaryRes[0] || null) : summaryRes;
-            const duration = summaryObj && summaryObj.engineHours ? summaryObj.engineHours : 0;
-            console.log('Device', traccarId, '→ ruta:', routeData, 'resumen:', summaryObj);
+                kmData[idx] = { km: km, litros: 0, costo: 0 };
+                if (kmCell) kmCell.innerHTML = '<span class="text-indigo-700 font-semibold">' + km.toFixed(2) + '</span>';
+                if (durCell) durCell.textContent = fmtDuration(duration);
+                if (spdCell) spdCell.textContent = maxSpeed > 0 ? maxSpeed : '—';
+                calcFuel(idx);
+                return;
+            }
+
+            // Summary empty → fallback to route points
+            console.log('Summary vacío para', traccarId, '→ fallback ruta...');
+            if (kmCell) kmCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs text-indigo-300"></i> <span class="text-xs text-gray-400">ruta...</span>';
+
+            // Wait before route request to avoid rate limiting
+            await delay(800);
+            const routeData = await fetchRouteDistance(traccarId);
 
             if (routeData && routeData.km > 0) {
                 kmData[idx] = { km: routeData.km, litros: 0, costo: 0 };
@@ -370,12 +411,21 @@ $devicesJson = json_encode(array_map(function($d) {
                 if (durCell) durCell.textContent = fmtDuration(duration);
                 if (spdCell) spdCell.textContent = routeData.maxSpeed > 0 ? routeData.maxSpeed : '—';
                 calcFuel(idx);
-            } else {
-                if (kmCell)  kmCell.innerHTML  = '<span class="text-gray-300">Sin datos</span>';
-                if (durCell) durCell.innerHTML  = '<span class="text-gray-300">—</span>';
-                if (spdCell) spdCell.innerHTML  = '<span class="text-gray-300">—</span>';
-                kmData[idx] = { km: null, litros: 0, costo: 0 };
+                return;
             }
+
+            // No data in range → show last activity
+            const info = lastSeenInfo[traccarId];
+            if (info && info.lastUpdate) {
+                const lastDate = new Date(info.lastUpdate);
+                const dateStr  = lastDate.toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' });
+                if (kmCell) kmCell.innerHTML = '<span class="text-amber-500 text-xs"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Última actividad: ' + dateStr + '</span>';
+            } else {
+                if (kmCell) kmCell.innerHTML = '<span class="text-gray-300 text-xs">Sin registros en Traccar</span>';
+            }
+            if (durCell) durCell.innerHTML = '<span class="text-gray-300">—</span>';
+            if (spdCell) spdCell.innerHTML = '<span class="text-gray-300">—</span>';
+            kmData[idx] = { km: null, litros: 0, costo: 0 };
 
         } catch (e) {
             console.error('Error fetching data for device', traccarId, e);
@@ -389,16 +439,17 @@ $devicesJson = json_encode(array_map(function($d) {
     // Fetch real Traccar device list, match by uniqueId (IMEI), then fetch summaries
     async function loadAll() {
         // Step 1: Get real device list from Traccar to resolve correct IDs
-        let traccarMap = {}; // uniqueId (IMEI string) → real Traccar device id
+        let traccarMap = {};     // uniqueId (IMEI string) → real Traccar device id
+        let traccarInfo = {};    // traccar device id → full device info
         try {
             const devRes = await fetch(BASE + '/geolocalizacion/dispositivos');
             const traccarDevices = await devRes.json();
             if (Array.isArray(traccarDevices)) {
                 traccarDevices.forEach(function(td) {
                     if (td.uniqueId && td.id) {
-                        // Store with the raw uniqueId and also a cleaned version (no spaces)
                         traccarMap[String(td.uniqueId).trim()] = td.id;
                         traccarMap[String(td.uniqueId).replace(/\s+/g, '')] = td.id;
+                        traccarInfo[td.id] = td;
                     }
                 });
             }
@@ -407,21 +458,35 @@ $devicesJson = json_encode(array_map(function($d) {
             console.error('Error fetching Traccar devices:', e);
         }
 
-        // Step 2: For each local device, find the real Traccar ID via uniqueId match
+        lastSeenInfo = traccarInfo;
+
+        // Step 2: Resolve real Traccar IDs for all local devices
+        // Build set of valid internal IDs to distinguish from uniqueIds
+        const validInternalIds = new Set(Object.values(traccarMap));
+
+        const deviceIdMap = []; // [{idx, device, traccarId}]
         for (let idx = 0; idx < devices.length; idx++) {
             const d = devices[idx];
             const uniqueClean = d.unique_id ? d.unique_id.replace(/\s+/g, '') : '';
-
-            // Try matching by unique_id (IMEI) first, fall back to stored traccar_device_id
             let realTraccarId = traccarMap[uniqueClean] || traccarMap[d.unique_id] || null;
 
-            // If no match by unique_id, try the stored traccar_device_id (might be correct)
             if (!realTraccarId && d.traccar_device_id > 0) {
-                realTraccarId = d.traccar_device_id;
+                const dbVal = d.traccar_device_id;
+                if (validInternalIds.has(dbVal)) {
+                    // DB has a correct internal ID
+                    realTraccarId = dbVal;
+                } else if (traccarMap[String(dbVal)]) {
+                    // DB stored a Traccar uniqueId instead of internal ID — resolve it
+                    realTraccarId = traccarMap[String(dbVal)];
+                    console.warn('Device', d.unique_id, '→ BD tiene uniqueId', dbVal,
+                                 'en traccar_device_id, ID interno real:', realTraccarId);
+                } else {
+                    // Unknown value, try it anyway
+                    realTraccarId = dbVal;
+                }
             }
 
             if (realTraccarId) {
-                // Auto-fix DB if the stored ID was wrong
                 if (realTraccarId !== d.traccar_device_id) {
                     console.log('Device', d.unique_id, '→ Traccar ID:', realTraccarId,
                                 '(CORREGIDO, BD tenía: ' + d.traccar_device_id + ')');
@@ -430,7 +495,6 @@ $devicesJson = json_encode(array_map(function($d) {
                     console.log('Device', d.unique_id, '→ Traccar ID:', realTraccarId, '(OK)');
                 }
 
-                // Update Mapa link with the real resolved Traccar ID
                 const mapaLink = document.getElementById('mapa-link-' + idx);
                 if (mapaLink) {
                     mapaLink.href = BASE + '/geolocalizacion?deviceId=' + realTraccarId
@@ -439,9 +503,26 @@ $devicesJson = json_encode(array_map(function($d) {
                         + '&name=' + encodeURIComponent(d.unique_id);
                 }
 
-                await fetchSummary(idx, realTraccarId);
+                deviceIdMap.push({ idx: idx, device: d, traccarId: realTraccarId });
             } else {
                 console.warn('Device', d.unique_id, '→ No se encontró en Traccar');
+                const kmCell = document.getElementById('km-' + idx);
+                if (kmCell) kmCell.innerHTML = '<span class="text-gray-300 text-xs">No encontrado en Traccar</span>';
+            }
+        }
+
+        // Step 3: Fetch summary for each device ONE BY ONE with delay
+        // Wait 1.5s after devices fetch to avoid rate-limiting
+        console.log('Esperando 1.5s antes de iniciar resúmenes...');
+        await delay(1500);
+
+        for (let i = 0; i < deviceIdMap.length; i++) {
+            const entry = deviceIdMap[i];
+            console.log('── Dispositivo ' + (i+1) + '/' + deviceIdMap.length + ': traccarId=' + entry.traccarId + ' ──');
+            await fetchSummary(entry.idx, entry.traccarId);
+            // Wait between requests to avoid rate limiting
+            if (i < deviceIdMap.length - 1) {
+                await delay(1200);
             }
         }
         updateTotals();

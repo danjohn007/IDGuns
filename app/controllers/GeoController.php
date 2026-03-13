@@ -111,6 +111,41 @@ class GeoController extends BaseController
         $this->json($data);
     }
 
+    /**
+     * Proxy: GET /geolocalizacion/resumen-batch?deviceIds=1,2,3&from=Y&to=Z
+     * Returns summary for multiple devices in a single Traccar request.
+     */
+    public function summaryBatch(): void
+    {
+        $this->requireAuth();
+        session_write_close();
+
+        $ids  = $_GET['deviceIds'] ?? '';
+        $from = $_GET['from'] ?? date('Y-m-01') . 'T00:00:00Z';
+        $to   = $_GET['to']   ?? date('Y-m-d')  . 'T23:59:59Z';
+
+        // Parse comma-separated IDs and build Traccar query string
+        $deviceIds = array_filter(array_map('intval', explode(',', $ids)));
+        if (empty($deviceIds)) {
+            $this->json(['error' => 'deviceIds requerido'], 400);
+            return;
+        }
+
+        $params = '';
+        foreach ($deviceIds as $did) {
+            $params .= '&deviceId=' . $did;
+        }
+        // Remove leading &
+        $params = ltrim($params, '&');
+
+        $data = $this->traccarGet(
+            '/api/reports/summary?' . $params
+            . '&from=' . urlencode($from)
+            . '&to='   . urlencode($to)
+        );
+        $this->json($data);
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private function traccarGet(string $endpoint): array
@@ -128,7 +163,7 @@ class GeoController extends BaseController
         $ch  = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_TIMEOUT        => 30,
             CURLOPT_USERPWD        => $user . ':' . $pass,
             CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,
             CURLOPT_HTTPHEADER     => ['Accept: application/json'],
@@ -146,10 +181,13 @@ class GeoController extends BaseController
         if ($code === 401) {
             return ['error' => 'Credenciales Traccar incorrectas (401)'];
         }
+        if ($code !== 200) {
+            return ['error' => 'Traccar HTTP ' . $code, '_debug_body' => substr($response, 0, 500), '_debug_url' => $url];
+        }
 
         $decoded = json_decode($response, true);
         if (!is_array($decoded)) {
-            return ['error' => 'Respuesta inválida del servidor Traccar'];
+            return ['error' => 'Respuesta inválida del servidor Traccar', '_debug_body' => substr($response, 0, 500), '_debug_url' => $url];
         }
         return $decoded;
     }
