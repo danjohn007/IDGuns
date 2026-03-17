@@ -182,12 +182,12 @@ class GeoController extends BaseController
             return ['error' => 'Credenciales Traccar incorrectas (401)'];
         }
         if ($code !== 200) {
-            return ['error' => 'Traccar HTTP ' . $code, '_debug_body' => substr($response, 0, 500), '_debug_url' => $url];
+            return ['error' => 'Traccar HTTP ' . $code];
         }
 
         $decoded = json_decode($response, true);
         if (!is_array($decoded)) {
-            return ['error' => 'Respuesta inválida del servidor Traccar', '_debug_body' => substr($response, 0, 500), '_debug_url' => $url];
+            return ['error' => 'Respuesta inválida del servidor Traccar'];
         }
         return $decoded;
     }

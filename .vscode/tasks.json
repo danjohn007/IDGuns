@@ -1,0 +1,10 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Git: commit and push to main",
+			"type": "shell",
+			"command": "cd c:\\Users\\danie\\Downloads\\IDGuns && git branch --show-current && git add -A && git commit -m \"fix: align distance formula (Haversine R=6371000) and timezone between Reportes GPS and Geolocalización\" && git push origin main"
+		}
+	]
+}

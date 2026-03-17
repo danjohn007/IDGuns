@@ -236,7 +236,22 @@ $devicesJson = json_encode(array_map(function($d) {
     const globalKmL = <?= json_encode($kmPorLitro) ?>;
     const precioL   = <?= json_encode($precioPorLitro) ?>;
 
+    const TZ = <?= json_encode($timezone) ?>;
     const kmData = {};
+
+    // Timezone offset (same as Geolocalización) so both views query the exact same GPS points
+    function getTzOffsetStr(tz) {
+        const now    = new Date();
+        const utcMs  = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' })).getTime();
+        const tzMs   = new Date(now.toLocaleString('en-US', { timeZone: tz })).getTime();
+        const offMin = (utcMs - tzMs) / 60000;
+        const sign   = offMin >= 0 ? '-' : '+';
+        const abs    = Math.abs(offMin);
+        const hh     = String(Math.floor(abs / 60)).padStart(2, '0');
+        const mm     = String(abs % 60).padStart(2, '0');
+        return sign + hh + ':' + mm;
+    }
+    const tzOffset = getTzOffsetStr(TZ);
 
     // Auto-fix incorrect traccar_device_id in DB (fire-and-forget)
     function fixTraccarIdInDb(localDeviceId, realTraccarId) {
@@ -297,29 +312,25 @@ $devicesJson = json_encode(array_map(function($d) {
         updateTotals();
     }
 
-    // Calculate distance from GPS points (same method as Geolocalización Historial)
+    // Calculate distance from GPS points (Haversine R=6371000 — identical to Leaflet map.distance)
     function calcDistanceFromPositions(positions) {
-        let d = 0;
-        for (let i = 1; i < positions.length; i++) {
-            const lat1 = positions[i-1].latitude, lon1 = positions[i-1].longitude;
-            const lat2 = positions[i].latitude,   lon2 = positions[i].longitude;
+        var d = 0, rad = Math.PI / 180;
+        for (var i = 1; i < positions.length; i++) {
+            var lat1 = positions[i-1].latitude, lon1 = positions[i-1].longitude;
+            var lat2 = positions[i].latitude,   lon2 = positions[i].longitude;
             if (!lat1 || !lon1 || !lat2 || !lon2) continue;
-            // Haversine formula (meters)
-            const R = 6371000;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2)
-                    + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180)
-                    * Math.sin(dLon/2) * Math.sin(dLon/2);
-            d += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            var sinDLat = Math.sin((lat2 - lat1) * rad / 2);
+            var sinDLon = Math.sin((lon2 - lon1) * rad / 2);
+            var a = sinDLat * sinDLat + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * sinDLon * sinDLon;
+            d += 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
         return d / 1000; // km
     }
 
     // Fetch route positions and calculate distance + max speed from raw data
     async function fetchRouteDistance(traccarId) {
-        const from = dateFrom + 'T00:00:00Z';
-        const to   = dateTo   + 'T23:59:59Z';
+        const from = dateFrom + 'T00:00:00' + tzOffset;
+        const to   = dateTo   + 'T23:59:59' + tzOffset;
         const url  = BASE + '/geolocalizacion/ruta?deviceId=' + traccarId
                      + '&from=' + encodeURIComponent(from)
                      + '&to='   + encodeURIComponent(to);
@@ -343,73 +354,62 @@ $devicesJson = json_encode(array_map(function($d) {
 
     function delay(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
 
-    // ── Manual test: run testDevice(61995197) in browser console ──────────
-    window.testDevice = async function(deviceId) {
-        const from = dateFrom + 'T00:00:00Z';
-        const to   = dateTo   + 'T23:59:59Z';
-        const url = BASE + '/geolocalizacion/resumen?deviceId=' + deviceId
-                    + '&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
-        console.log('%c[TEST] URL: ' + url, 'color:blue;font-weight:bold');
-        const res = await fetch(url, { cache: 'no-store' });
-        const txt = await res.text();
-        console.log('%c[TEST] Status: ' + res.status + '  Body: ' + txt, 'color:blue');
-        return JSON.parse(txt);
-    };
-
-    async function fetchSummary(idx, traccarId) {
+    async function fetchDeviceData(idx, traccarId) {
         const kmCell  = document.getElementById('km-'  + idx);
         const durCell = document.getElementById('dur-' + idx);
         const spdCell = document.getElementById('spd-' + idx);
 
-        const from = dateFrom + 'T00:00:00Z';
-        const to   = dateTo   + 'T23:59:59Z';
+        const from = dateFrom + 'T00:00:00' + tzOffset;
+        const to   = dateTo   + 'T23:59:59' + tzOffset;
 
         try {
-            if (kmCell) kmCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs text-indigo-300"></i> <span class="text-xs text-gray-400">resumen...</span>';
+            if (kmCell) kmCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs text-indigo-300"></i> <span class="text-xs text-gray-400">cargando ruta...</span>';
 
-            // Individual summary request (same as Geolocalización popup)
-            const summaryUrl = BASE + '/geolocalizacion/resumen?deviceId=' + traccarId
-                         + '&from=' + encodeURIComponent(from)
-                         + '&to='   + encodeURIComponent(to);
-            console.log('[REQ] ' + summaryUrl);
-            const summaryRes = await fetch(summaryUrl, { cache: 'no-store' });
-            const rawText = await summaryRes.text();
-            console.log('[RES] status=' + summaryRes.status + ' deviceId=' + traccarId + ' body=' + rawText.substring(0, 300));
-            let summaryData;
-            try { summaryData = JSON.parse(rawText); } catch(pe) {
-                console.error('JSON parse error for device', traccarId, pe, rawText.substring(0, 200));
-                throw pe;
-            }
-            const summaryObj = Array.isArray(summaryData) ? (summaryData[0] || null) : summaryData;
-            const duration   = summaryObj && summaryObj.engineHours ? summaryObj.engineHours : 0;
-            console.log('Summary deviceId=' + traccarId, summaryObj);
-
-            // If summary has distance, use it
-            if (summaryObj && summaryObj.distance > 0) {
-                const km       = +(summaryObj.distance / 1000).toFixed(2);
-                const maxSpeed = summaryObj.maxSpeed !== undefined ? +(summaryObj.maxSpeed * 1.852).toFixed(1) : 0;
-
-                kmData[idx] = { km: km, litros: 0, costo: 0 };
-                if (kmCell) kmCell.innerHTML = '<span class="text-indigo-700 font-semibold">' + km.toFixed(2) + '</span>';
-                if (durCell) durCell.textContent = fmtDuration(duration);
-                if (spdCell) spdCell.textContent = maxSpeed > 0 ? maxSpeed : '—';
-                calcFuel(idx);
-                return;
-            }
-
-            // Summary empty → fallback to route points
-            console.log('Summary vacío para', traccarId, '→ fallback ruta...');
-            if (kmCell) kmCell.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs text-indigo-300"></i> <span class="text-xs text-gray-400">ruta...</span>';
-
-            // Wait before route request to avoid rate limiting
-            await delay(800);
+            // Fetch route (primary source for km — same Haversine as Geolocalización map)
             const routeData = await fetchRouteDistance(traccarId);
 
             if (routeData && routeData.km > 0) {
                 kmData[idx] = { km: routeData.km, litros: 0, costo: 0 };
                 if (kmCell) kmCell.innerHTML = '<span class="text-indigo-700 font-semibold">' + routeData.km.toFixed(2) + '</span>';
-                if (durCell) durCell.textContent = fmtDuration(duration);
                 if (spdCell) spdCell.textContent = routeData.maxSpeed > 0 ? routeData.maxSpeed : '—';
+
+                // Fetch summary in background for engineHours only
+                await delay(400);
+                try {
+                    const summaryUrl = BASE + '/geolocalizacion/resumen?deviceId=' + traccarId
+                                 + '&from=' + encodeURIComponent(from)
+                                 + '&to='   + encodeURIComponent(to);
+                    const sRes = await fetch(summaryUrl, { cache: 'no-store' });
+                    const sData = await sRes.json();
+                    const sObj = Array.isArray(sData) ? (sData[0] || null) : sData;
+                    if (sObj && sObj.engineHours) {
+                        if (durCell) durCell.textContent = fmtDuration(sObj.engineHours);
+                    } else {
+                        if (durCell) durCell.innerHTML = '<span class="text-gray-300">—</span>';
+                    }
+                } catch(e2) {
+                    if (durCell) durCell.innerHTML = '<span class="text-gray-300">—</span>';
+                }
+
+                calcFuel(idx);
+                return;
+            }
+
+            // Route empty → try summary as fallback (maybe device has odometer data but no route points)
+            await delay(400);
+            const summaryUrl = BASE + '/geolocalizacion/resumen?deviceId=' + traccarId
+                         + '&from=' + encodeURIComponent(from)
+                         + '&to='   + encodeURIComponent(to);
+            const summaryRes = await fetch(summaryUrl, { cache: 'no-store' });
+            const summaryData = await summaryRes.json();
+            const summaryObj = Array.isArray(summaryData) ? (summaryData[0] || null) : summaryData;
+
+            if (summaryObj && summaryObj.distance > 0) {
+                const km = +(summaryObj.distance / 1000).toFixed(2);
+                kmData[idx] = { km: km, litros: 0, costo: 0 };
+                if (kmCell) kmCell.innerHTML = '<span class="text-indigo-700 font-semibold">' + km.toFixed(2) + ' <span class="text-xs text-gray-400">(odómetro)</span></span>';
+                if (durCell) durCell.textContent = fmtDuration(summaryObj.engineHours || 0);
+                if (spdCell) spdCell.textContent = summaryObj.maxSpeed > 0 ? +(summaryObj.maxSpeed * 1.852).toFixed(1) : '—';
                 calcFuel(idx);
                 return;
             }
@@ -429,7 +429,7 @@ $devicesJson = json_encode(array_map(function($d) {
 
         } catch (e) {
             console.error('Error fetching data for device', traccarId, e);
-            if (kmCell) kmCell.innerHTML = '<span class="text-red-400 text-xs">Error red</span>';
+            if (kmCell) kmCell.innerHTML = '<span class="text-red-400 text-xs">Error</span>';
             if (durCell) durCell.innerHTML = '<span class="text-gray-300">—</span>';
             if (spdCell) spdCell.innerHTML = '<span class="text-gray-300">—</span>';
             kmData[idx] = { km: null, litros: 0, costo: 0 };
@@ -519,7 +519,7 @@ $devicesJson = json_encode(array_map(function($d) {
         for (let i = 0; i < deviceIdMap.length; i++) {
             const entry = deviceIdMap[i];
             console.log('── Dispositivo ' + (i+1) + '/' + deviceIdMap.length + ': traccarId=' + entry.traccarId + ' ──');
-            await fetchSummary(entry.idx, entry.traccarId);
+            await fetchDeviceData(entry.idx, entry.traccarId);
             // Wait between requests to avoid rate limiting
             if (i < deviceIdMap.length - 1) {
                 await delay(1200);

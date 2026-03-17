@@ -298,7 +298,7 @@ async function openDevicePopup(marker, pos, dev, local) {
     loadMonthSummary(pos.deviceId, local);
 }
 
-// ── Load current-month km summary for popup ───────────────────────────────────
+// ── Load current-month km for popup (route-based, same as Historial panel) ────
 async function loadMonthSummary(traccarDeviceId, local) {
     const kmRow    = document.getElementById('row-km-'    + traccarDeviceId);
     const costoRow = document.getElementById('row-costo-' + traccarDeviceId);
@@ -309,16 +309,34 @@ async function loadMonthSummary(traccarDeviceId, local) {
     const year     = tzDate.getFullYear();
     const month    = String(tzDate.getMonth() + 1).padStart(2, '0');
     const day      = String(tzDate.getDate()).padStart(2, '0');
-    const from     = `${year}-${month}-01T00:00:00Z`;
-    const to       = `${year}-${month}-${day}T23:59:59Z`;
+    const offset   = getTzOffsetStr(TZ);
+    const from     = `${year}-${month}-01T00:00:00${offset}`;
+    const to       = `${year}-${month}-${day}T23:59:59${offset}`;
 
     try {
-        const res  = await fetch(`${BASE_URL}/geolocalizacion/resumen?deviceId=${traccarDeviceId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
-        const data = await res.json();
+        // Use route positions + Haversine (consistent with Historial route panel and Reportes GPS)
+        const routeRes = await fetch(`${BASE_URL}/geolocalizacion/ruta?deviceId=${traccarDeviceId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const routeData = await routeRes.json();
 
-        // data may be an array (Traccar returns array) or an object if it's the first element
-        const summary = Array.isArray(data) ? (data[0] || {}) : (data || {});
-        const km      = summary.distance !== undefined ? (summary.distance / 1000).toFixed(2) : null;
+        let km = null;
+        if (Array.isArray(routeData) && routeData.length > 0) {
+            const latlngs = routeData
+                .filter(p => p.latitude && p.longitude)
+                .map(p => [p.latitude, p.longitude]);
+            if (latlngs.length > 1) {
+                km = calcDistance(latlngs).toFixed(2);
+            }
+        }
+
+        // If route has no data, fallback to summary distance
+        if (km === null) {
+            const sumRes = await fetch(`${BASE_URL}/geolocalizacion/resumen?deviceId=${traccarDeviceId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+            const sumData = await sumRes.json();
+            const summary = Array.isArray(sumData) ? (sumData[0] || {}) : (sumData || {});
+            if (summary.distance !== undefined && summary.distance > 0) {
+                km = (summary.distance / 1000).toFixed(2);
+            }
+        }
 
         if (kmRow) {
             kmRow.cells[1].innerHTML = km !== null
@@ -330,7 +348,7 @@ async function loadMonthSummary(traccarDeviceId, local) {
             const kml = local && local.km_por_litro ? parseFloat(local.km_por_litro) : 0;
             if (kml > 0) {
                 const litros = parseFloat(km) / kml;
-                const costo  = (litros * 22.5).toFixed(2); // default MXN avg price
+                const costo  = (litros * 22.5).toFixed(2);
                 costoRow.cells[1].innerHTML = `<strong style="color:#059669">$${Number(costo).toLocaleString('es-MX', {minimumFractionDigits:2})} MXN</strong>`;
             } else {
                 costoRow.cells[1].innerHTML = '<span style="color:#9ca3af;font-size:0.75rem">Asigne km/L en Reportes GPS</span>';
