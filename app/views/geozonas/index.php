@@ -2,7 +2,7 @@
 // Inline styles for the Geozonas layout
 ?>
 <style>
-  #gz-map { height: calc(100vh - 200px); min-height: 420px; border-radius: 0 0.75rem 0.75rem 0; }
+  #gz-map { height: calc(100vh - 200px); min-height: 420px; border-radius: 0 0.75rem 0.75rem 0; z-index: 1; }
   .gz-sidebar { height: calc(100vh - 200px); min-height: 420px; overflow-y: auto; }
   .gz-item { display:flex; align-items:center; justify-content:space-between; padding:0.625rem 1rem;
              border-bottom:1px solid #f1f5f9; cursor:pointer; transition:background .15s; }
@@ -126,7 +126,7 @@
 
 <!-- Edit Geozona Modal -->
 <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
-<div id="edit-gz-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+<div id="edit-gz-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index:10000;">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
         <h3 class="font-semibold text-gray-700 mb-4 text-sm">
             <i class="fa-solid fa-pen mr-1 text-indigo-500"></i> Editar Geozona
@@ -221,7 +221,7 @@ function renderList(geofences) {
             </div>
             <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
             <div class="flex items-center gap-1 ml-2" onclick="event.stopPropagation()">
-                <button onclick="openEditForm(${g.id}, ${JSON.stringify(g.name)}, ${JSON.stringify(g.description||'')}, ${JSON.stringify(g.area||'')})"
+                <button onclick="openEditForm(${g.id}, ${escHtml(JSON.stringify(g.name))}, ${escHtml(JSON.stringify(g.description||''))}, ${escHtml(JSON.stringify(g.area||''))})"
                    class="text-indigo-400 hover:text-indigo-600 p-1" title="Editar">
                     <i class="fa-solid fa-pen text-xs"></i>
                 </button>

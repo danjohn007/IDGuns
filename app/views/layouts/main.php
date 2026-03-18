@@ -201,11 +201,9 @@
             ?>
             <a href="<?= BASE_URL ?>/notificaciones" class="relative text-gray-500 hover:text-indigo-600 transition-colors" title="Notificaciones">
                 <i class="fa-solid fa-bell text-lg"></i>
-                <?php if ($__notifCount > 0): ?>
-                <span class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                <span id="notif-badge" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center <?= $__notifCount > 0 ? '' : 'hidden' ?>">
                     <?= min($__notifCount, 9) ?>
                 </span>
-                <?php endif; ?>
             </a>
             <a href="<?= BASE_URL ?>/logout"
                class="flex items-center gap-1 text-red-500 hover:text-red-700 font-medium">
@@ -262,6 +260,39 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeSidebar();
   });
+
+  // ── Auto-sync Traccar geofence events (poor-man's cron) ──
+  (function(){
+    const BASE = <?= json_encode(rtrim(BASE_URL, '/')) ?>;
+    const INTERVAL_MS = 120000; // 2 minutes
+
+    function syncAndUpdateBadge(){
+      fetch(BASE + '/notificaciones/eventos', {credentials:'same-origin'})
+        .then(r => { if(!r.ok) throw r; return r.json(); })
+        .then(()=>{
+          // Refresh unread count
+          return fetch(BASE + '/notificaciones/count', {credentials:'same-origin'});
+        })
+        .then(r => { if(!r.ok) throw r; return r.json(); })
+        .then(data => {
+          const badge = document.getElementById('notif-badge');
+          const count = parseInt(data.count, 10) || 0;
+          if(badge){
+            if(count > 0){
+              badge.textContent = Math.min(count, 9);
+              badge.classList.remove('hidden');
+            } else {
+              badge.classList.add('hidden');
+            }
+          }
+        })
+        .catch(()=>{});
+    }
+
+    setInterval(syncAndUpdateBadge, INTERVAL_MS);
+    // Also run once shortly after page load
+    setTimeout(syncAndUpdateBadge, 5000);
+  })();
 </script>
 
 </body>

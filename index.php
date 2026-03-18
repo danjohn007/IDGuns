@@ -106,6 +106,8 @@ $routes = [
     'perfil/cambiar-contrasena'     => ['ProfileController',  'changePassword'],
 
     'notificaciones'                => ['NotificationsController', 'index'],
+    'notificaciones/eventos'        => ['NotificationsController', 'events'],
+    'notificaciones/count'          => ['NotificationsController', 'count'],
 ];
 
 // ─── Dynamic routes with numeric ID segments ───────────────────────────────
