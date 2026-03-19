@@ -102,6 +102,8 @@ class WarehouseController extends BaseController
         }
 
         $this->supplyModel->insert($data);
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('almacen', $userName . ' registró nuevo suministro: ' . $data['nombre'], '/almacen');
         $this->setFlash('success', 'Suministro registrado correctamente.');
         $this->redirect('almacen');
     }
@@ -159,6 +161,8 @@ class WarehouseController extends BaseController
         ];
 
         $this->supplyModel->update($id, $data);
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('almacen', $userName . ' actualizó suministro: ' . $data['nombre'], '/almacen');
         $this->setFlash('success', 'Suministro actualizado.');
         $this->redirect('almacen');
     }
@@ -188,6 +192,9 @@ class WarehouseController extends BaseController
             if ($movData['suministro_id'] <= 0) throw new \RuntimeException("Seleccione un suministro.");
 
             $this->supplyModel->registrarMovimiento($movData);
+            $userName = $_SESSION['user_name'] ?? 'Usuario';
+            $tipoMov = $movData['tipo'] === 'entrada' ? 'entrada' : 'salida';
+            $this->notifyAll('almacen', $userName . ' registró ' . $tipoMov . ' de ' . $movData['cantidad'] . ' unidad(es) en almacén', '/almacen');
             $this->setFlash('success', 'Movimiento registrado correctamente.');
         } catch (\RuntimeException $e) {
             $this->setFlash('error', $e->getMessage());
@@ -203,6 +210,8 @@ class WarehouseController extends BaseController
         $id = (int) ($_GET['id'] ?? 0);
         if ($id) {
             $this->supplyModel->delete($id);
+            $userName = $_SESSION['user_name'] ?? 'Usuario';
+            $this->notifyAll('almacen', $userName . ' eliminó suministro #' . $id, '/almacen');
             $this->setFlash('success', 'Suministro eliminado.');
         }
         $this->redirect('almacen');

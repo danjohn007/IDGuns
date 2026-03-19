@@ -114,4 +114,34 @@ class BaseController
     {
         return max(1, (int) ($_GET['pagina'] ?? 1));
     }
+
+    /**
+     * Create a notification for all active users.
+     * @param string $tipo   Category: personal, vehiculo, inventario, almacen, bitacora, geozona, sistema
+     * @param string $mensaje Human-readable message
+     * @param string $url     Relative URL to link to (e.g. '/personal')
+     */
+    protected function notifyAll(string $tipo, string $mensaje, string $url = '/notificaciones'): void
+    {
+        try {
+            $db    = Database::getInstance();
+            $users = $db->query("SELECT id FROM users WHERE activo = 1")->fetchAll();
+            $stmt  = $db->prepare(
+                "INSERT INTO notificaciones (user_id, tipo, mensaje, url, leido, created_at)
+                 VALUES (:uid, :tipo, :msg, :url, 0, :cr)"
+            );
+            $now = date('Y-m-d H:i:s');
+            foreach ($users as $u) {
+                $stmt->execute([
+                    ':uid'  => $u['id'],
+                    ':tipo' => $tipo,
+                    ':msg'  => $mensaje,
+                    ':url'  => $url,
+                    ':cr'   => $now,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // notificaciones table may not exist yet
+        }
+    }
 }

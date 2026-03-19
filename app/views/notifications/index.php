@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="text-lg font-semibold text-gray-800">Notificaciones y Alertas</h2>
-            <p class="text-sm text-gray-500 mt-0.5">Eventos de entrada y salida de geozonas</p>
+            <p class="text-sm text-gray-500 mt-0.5">Eventos del sistema: personal, vehículos, inventario, almacén, bitácora y geozonas</p>
         </div>
     </div>
 
@@ -19,6 +19,13 @@
             $tipoIcons = [
                 'geofenceEnter' => ['fa-right-to-bracket',    'bg-blue-100 text-blue-600'],
                 'geofenceExit'  => ['fa-right-from-bracket',  'bg-orange-100 text-orange-600'],
+                'personal'      => ['fa-user',                'bg-emerald-100 text-emerald-600'],
+                'vehiculo'      => ['fa-car',                 'bg-sky-100 text-sky-600'],
+                'inventario'    => ['fa-boxes-stacked',       'bg-violet-100 text-violet-600'],
+                'almacen'       => ['fa-warehouse',           'bg-amber-100 text-amber-600'],
+                'bitacora'      => ['fa-book',                'bg-rose-100 text-rose-600'],
+                'geozona'       => ['fa-draw-polygon',        'bg-teal-100 text-teal-600'],
+                'sistema'       => ['fa-gear',                'bg-gray-100 text-gray-600'],
             ];
             foreach ($notificaciones as $n):
                 $tipo = $n['tipo'] ?? 'sistema';
@@ -30,10 +37,21 @@
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm text-gray-800 <?= !$n['leido'] ? 'font-medium' : '' ?>">
-                        <?php if ($tipo === 'geofenceEnter'): ?>
-                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold text-blue-700 bg-blue-50 mr-1">Entrada</span>
-                        <?php elseif ($tipo === 'geofenceExit'): ?>
-                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold text-orange-700 bg-orange-50 mr-1">Salida</span>
+                        <?php
+                        $badges = [
+                            'geofenceEnter' => ['Entrada',    'text-blue-700 bg-blue-50'],
+                            'geofenceExit'  => ['Salida',     'text-orange-700 bg-orange-50'],
+                            'personal'      => ['Personal',   'text-emerald-700 bg-emerald-50'],
+                            'vehiculo'      => ['Vehículo',   'text-sky-700 bg-sky-50'],
+                            'inventario'    => ['Inventario', 'text-violet-700 bg-violet-50'],
+                            'almacen'       => ['Almacén',    'text-amber-700 bg-amber-50'],
+                            'bitacora'      => ['Bitácora',   'text-rose-700 bg-rose-50'],
+                            'geozona'       => ['Geozona',    'text-teal-700 bg-teal-50'],
+                        ];
+                        if (isset($badges[$tipo])):
+                            [$badgeLabel, $badgeCls] = $badges[$tipo];
+                        ?>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold <?= $badgeCls ?> mr-1"><?= $badgeLabel ?></span>
                         <?php endif; ?>
                         <?= htmlspecialchars($n['mensaje'] ?? '', ENT_QUOTES, 'UTF-8') ?>
                     </p>

@@ -88,6 +88,8 @@ class LogbookController extends BaseController
         }
 
         $this->logModel->insert($data);
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('bitacora', $userName . ' registró entrada en bitácora: ' . $data['tipo'] . ' — ' . mb_substr($data['descripcion'], 0, 50), '/bitacora');
         $this->setFlash('success', 'Entrada registrada en la bitácora.');
         $this->redirect('bitacora');
     }

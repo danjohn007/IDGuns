@@ -66,6 +66,8 @@ class PersonalController extends BaseController
         ];
 
         $this->personalModel->insert($data);
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('personal', $userName . ' registró nuevo personal: ' . $data['nombre'] . ' ' . $data['apellidos'], '/personal');
         $this->setFlash('success', 'Personal registrado correctamente.');
         $this->redirect('personal');
     }
@@ -119,6 +121,8 @@ class PersonalController extends BaseController
         ];
 
         $this->personalModel->update($id, $data);
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('personal', $userName . ' actualizó personal: ' . $data['nombre'] . ' ' . $data['apellidos'], '/personal');
         $this->setFlash('success', 'Personal actualizado correctamente.');
         $this->redirect('personal');
     }
@@ -199,6 +203,8 @@ class PersonalController extends BaseController
         fclose($handle);
 
         if ($imported > 0) {
+            $userName = $_SESSION['user_name'] ?? 'Usuario';
+            $this->notifyAll('personal', $userName . ' importó ' . $imported . ' registro(s) de personal', '/personal');
             $this->setFlash('success', "Importación completada: {$imported} registro(s) importado(s)" . ($errors > 0 ? ", {$errors} error(es) omitido(s)." : '.'));
         } else {
             $this->setFlash('error', "No se importó ningún registro. Verifique el formato del archivo CSV.");
@@ -214,6 +220,8 @@ class PersonalController extends BaseController
         $id = (int) ($_GET['id'] ?? 0);
         if ($id) {
             $this->personalModel->update($id, ['activo' => 0]);
+            $userName = $_SESSION['user_name'] ?? 'Usuario';
+            $this->notifyAll('personal', $userName . ' dio de baja a personal #' . $id, '/personal');
             $this->setFlash('success', 'Personal dado de baja.');
         }
         $this->redirect('personal');

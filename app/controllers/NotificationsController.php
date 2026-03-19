@@ -136,10 +136,10 @@ class NotificationsController extends BaseController
                  VALUES (:uid, :tipo, :msg, :url, 0, :cr)"
             );
 
-            // Get admin/superadmin user IDs
+            // Get all active user IDs for notifications
             $adminIds = [];
             try {
-                $admins   = $db->query("SELECT id FROM users WHERE rol IN ('superadmin','admin') AND activo = 1")->fetchAll();
+                $admins   = $db->query("SELECT id FROM users WHERE activo = 1")->fetchAll();
                 $adminIds = array_column($admins, 'id');
             } catch (\Throwable $e) {}
 

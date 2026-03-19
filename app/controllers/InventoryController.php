@@ -171,6 +171,8 @@ class InventoryController extends BaseController
             }
         }
 
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('inventario', $userName . ' registró nuevo activo: ' . $data['nombre'], '/inventario');
         $this->setFlash('success', 'Activo registrado correctamente.');
         $this->redirect('inventario');
     }
@@ -282,6 +284,8 @@ class InventoryController extends BaseController
             }
         }
 
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('inventario', $userName . ' actualizó activo: ' . $data['nombre'], '/inventario');
         $this->setFlash('success', 'Activo actualizado correctamente.');
         $this->redirect('inventario');
     }
@@ -331,6 +335,8 @@ class InventoryController extends BaseController
         $id = (int) ($_GET['id'] ?? ($_POST['id'] ?? 0));
         if ($id) {
             $this->assetModel->delete($id);
+            $userName = $_SESSION['user_name'] ?? 'Usuario';
+            $this->notifyAll('inventario', $userName . ' eliminó activo #' . $id, '/inventario');
             $this->setFlash('success', 'Activo eliminado.');
         }
         $this->redirect('inventario');

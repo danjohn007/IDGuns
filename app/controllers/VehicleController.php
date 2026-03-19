@@ -140,6 +140,8 @@ class VehicleController extends BaseController
             }
         }
 
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('vehiculo', $userName . ' registró nuevo vehículo: ' . $assetData['nombre'], '/vehiculos');
         $this->setFlash('success', 'Vehículo registrado correctamente.');
         $this->redirect('vehiculos');
     }
@@ -255,6 +257,8 @@ class VehicleController extends BaseController
             ]);
         }
 
+        $userName = $_SESSION['user_name'] ?? 'Usuario';
+        $this->notifyAll('vehiculo', $userName . ' actualizó vehículo #' . $id, '/vehiculos');
         $this->setFlash('success', 'Vehículo actualizado correctamente.');
         $this->redirect('vehiculos');
     }
@@ -302,6 +306,8 @@ class VehicleController extends BaseController
         $id = (int) ($_GET['id'] ?? 0);
         if ($id) {
             $this->vehicleModel->delete($id);
+            $userName = $_SESSION['user_name'] ?? 'Usuario';
+            $this->notifyAll('vehiculo', $userName . ' eliminó vehículo #' . $id, '/vehiculos');
             $this->setFlash('success', 'Vehículo eliminado.');
         }
         $this->redirect('vehiculos');
