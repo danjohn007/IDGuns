@@ -136,6 +136,11 @@ class NotificationsController extends BaseController
                  VALUES (:uid, :tipo, :msg, :url, 0, :cr)"
             );
 
+            // Check if a notification already exists for a user+event combo
+            $checkNotif = $db->prepare(
+                "SELECT COUNT(*) FROM notificaciones WHERE user_id = :uid AND tipo = :tipo AND mensaje = :msg AND created_at = :cr"
+            );
+
             // Get all active user IDs for notifications
             $adminIds = [];
             try {
@@ -178,11 +183,20 @@ class NotificationsController extends BaseController
                         ':eat'   => $eventoAt,
                         ':now'   => date('Y-m-d H:i:s'),
                     ]);
+                } catch (\Throwable $e) {}
 
-                    // If inserted (not duplicate), notify admins
-                    if ($insertEvt->rowCount() > 0 && !empty($adminIds)) {
-                        foreach ($adminIds as $uid) {
-                            try {
+                // Create notification for each user that doesn't already have it
+                if (!empty($adminIds)) {
+                    foreach ($adminIds as $uid) {
+                        try {
+                            $checkNotif->execute([
+                                ':uid'  => $uid,
+                                ':tipo' => $tipo,
+                                ':msg'  => $mensaje,
+                                ':cr'   => $eventoAt,
+                            ]);
+                            $exists = (int) $checkNotif->fetchColumn();
+                            if ($exists === 0) {
                                 $insertNotif->execute([
                                     ':uid'  => $uid,
                                     ':tipo' => $tipo,
@@ -190,10 +204,10 @@ class NotificationsController extends BaseController
                                     ':url'  => '/notificaciones',
                                     ':cr'   => $eventoAt,
                                 ]);
-                            } catch (\Throwable $e) {}
-                        }
+                            }
+                        } catch (\Throwable $e) {}
                     }
-                } catch (\Throwable $e) {}
+                }
             }
         } catch (\Throwable $e) {
             // Traccar unavailable or tables missing — fail silently
