@@ -180,12 +180,23 @@
                             </div>
                         </td>
                         <td class="px-4 py-3">
-                            <a href="<?= BASE_URL ?>/alertas/toggle/<?= $r['id'] ?>"
-                               class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium
-                                      <?= $r['activo'] ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500' ?>">
-                                <i class="fa-solid <?= $r['activo'] ? 'fa-circle-check' : 'fa-circle-xmark' ?>"></i>
-                                <?= $r['activo'] ? 'Activa' : 'Inactiva' ?>
-                            </a>
+                            <div class="flex items-center gap-2">
+                                <a href="<?= BASE_URL ?>/alertas/toggle/<?= $r['id'] ?>"
+                                   class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium
+                                          <?= $r['activo'] ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500' ?>">
+                                    <i class="fa-solid <?= $r['activo'] ? 'fa-circle-check' : 'fa-circle-xmark' ?>"></i>
+                                    <?= $r['activo'] ? 'Activa' : 'Inactiva' ?>
+                                </a>
+                                <?php if (!empty($r['traccar_notification_id'])): ?>
+                                <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700" title="Sincronizada con Traccar (ID: <?= (int)$r['traccar_notification_id'] ?>)">
+                                    <i class="fa-solid fa-satellite-dish"></i> Traccar
+                                </span>
+                                <?php elseif ($r['activo']): ?>
+                                <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600" title="No sincronizada con Traccar">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </span>
+                                <?php endif; ?>
+                            </div>
                         </td>
                         <?php if (in_array($_SESSION['user_role'] ?? '', ['superadmin', 'admin'])): ?>
                         <td class="px-4 py-3 text-right whitespace-nowrap">

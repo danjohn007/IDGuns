@@ -100,6 +100,7 @@ $routes = [
     'alertas'                       => ['AlertasController',  'index'],
     'alertas/guardar'               => ['AlertasController',  'store'],
     'alertas/actualizar'            => ['AlertasController',  'updateRule'],
+    'alertas/debug'                 => ['AlertasController',  'debugTraccar'],
 
     'perfil'                        => ['ProfileController',  'index'],
     'perfil/actualizar'             => ['ProfileController',  'update'],
